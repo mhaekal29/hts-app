@@ -7,6 +7,9 @@ import * as XLSX from "xlsx";
 var SIZES=["5.5 kg","12 kg","50 kg"];
 var JENIS=["Isi","Tabung+Isi"];
 var DENOMS=[100000,50000,20000,10000,5000,2000,1000];
+// Urutan role untuk dropdown
+var ROLE_ORDER=["admin","akuntan","sales_driver","sales_freelance","checker","driver_truck","owner"];
+function sortEmp(emps){return(emps||[]).slice().sort((a,b)=>{var ia=ROLE_ORDER.indexOf(a.role);var ib=ROLE_ORDER.indexOf(b.role);if(ia!==ib)return ia-ib;return(a.nama||"").localeCompare(b.nama||"");});}
 // Load Plus Jakarta Sans font
 (function(){if(typeof document!=="undefined"&&!document.getElementById("pjs-font")){var l=document.createElement("link");l.id="pjs-font";l.rel="stylesheet";l.href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap";document.head.appendChild(l);}})();
 var UANG_MAKAN_DEFAULT=15000;
@@ -14,11 +17,11 @@ var SPBE_LOC={"SPPBE KCR":25000,"SPPBE MGL":115000};
 var KAT_K=["BBM","Gaji","Uang Makan Karyawan","Perbaikan","Administrasi","Sewa","Parkir","Service Kendaraan","Fee LPG 50kg","Uang Jalan SPBE","Uang Bongkar DO","Pancung 12kg","Pancung 5.5kg","Listrik PLN","Internet Wi-Fi","Air Galon","Lainnya"];
 var KAT_AUTO_HARGA={"Uang Bongkar DO":50000,"Pancung 12kg":200000,"Pancung 5.5kg":95000};
 var SPPBE_OPTS=["SPPBE KCR","SPPBE MGL","Lainnya"];
-var PLG_KAT_27=["Rumah Tangga","Restaurant","Cafe","Warung Kopi","Warung Nasi/Rumah Makan","Kedai Bakso/Mie Ayam","Kantin Sekolah/Kampus","Catering","SPPG","UMKM Kuliner","King Fried Chicken","Toko Roti","Pabrik Roti","Produksi Industri Makanan","Peternakan Ayam","Hotel","Rumah Sakit","Kantor Pemerintah","Kantor Swasta","Kampus/Universitas","Pesantren","Pangkalan","Agen LPG","Reseller LPG","Laundry","Industri Rumahan"];
+var PLG_KAT_27=["Rumah Tangga","Restaurant","Cafe","Warung Kopi","Warung Nasi/Rumah Makan","Kedai Bakso/Mie Ayam","Kantin Sekolah/Kampus","Catering","SPPG","UMKM Kuliner","King Fried Chicken","Toko Roti","Pabrik Roti","Produksi Industri Makanan","Peternakan Ayam","Hotel","Rumah Sakit","Kantor Pemerintah","Kantor Swasta","Kampus/Universitas","Pesantren","Pangkalan","Agen LPG","Reseller LPG","Sub Agen LPG","Canvaser LPG","SPBU","Swalayan/Grosir","Mini Market/Kios","WO/Event Organizer","Usaha Umum","Laundry","Industri Rumahan","Lainnya"]
 var PLG_TITIP_KAT=PLG_KAT_27.filter(k=>!["Rumah Tangga","Industri Rumahan"].includes(k));
 var KAT_OPS=["BBM","Uang Bongkar DO","Uang Jalan SPBE","Fee LPG 50kg","Pancung 12kg","Pancung 5.5kg","Parkir","Service Kendaraan","Lainnya","Listrik PLN","Internet Wi-Fi","Air Galon"];
 var ABSENSI_STATUS=["Hadir","Sakit","Izin","Alpha","Cuti","Libur"];
-var ROLE_LBL={owner:"Owner/Komisaris",admin:"Admin",akuntan:"Akuntan/Kasir",sales_driver:"Sales Driver",sales_freelance:"Sales Freelance",checker:"Checker",driver_truck:"Driver Truck"};
+var ROLE_LBL={admin:"Manajer",akuntan:"Kasir/Akuntan",sales_driver:"Sales Driver",sales_freelance:"Sales Freelance",checker:"Checker",driver_truck:"Driver Truck",owner:"Komisaris"};
 var ROLE_TABS={owner:null,admin:null,akuntan:null,sales_driver:["dashboard","penjualan","piutang","setoran","pelanggan"],sales_freelance:["dashboard","penjualan","piutang","setoran","pelanggan"],checker:["dashboard","stok","do"],driver_truck:["dashboard","do"]};
 var PENJUALAN_ROLES=["admin","akuntan","sales_driver","sales_freelance","owner"];
 var DEF_MODAL={"Isi":{"5.5 kg":98881,"12 kg":212133,"50 kg":1026464},"Tabung+Isi":{"5.5 kg":381645,"12 kg":730990,"50 kg":2415419}};
@@ -147,7 +150,7 @@ stockLog:[],doList:[],modalHistory:[],hetPrices:{},titipList:[],
 penjualan:[],bon:[],pengeluaran:[],employees:DEF_EMP.slice(),
 tutupBuku:[],pelanggan:[],setoranSales:[],setoranLog:[],absensi:[],ambilan:[],payrollLog:[],
 counters:{inv:{},sg:{},reg:0},theme:"light",
-company:{nama:"PT. HOE TRANG SA",alamat:"Jl. Jendral Sudirman No.80, Geuce Iniem, Kec. Banda Raya, Kota Banda Aceh",telepon:"0812 6900 2121",telepon2:"(0651) 21221",email:"npso.pthoetrangsa@gmail.com",website:"pt-hoetrangsa.business.site",npwp:"",slogan:"DEALER LPG PERTAMINA",bankNama:"BSI",bankAtasNama:"PT. HOE TRANG SA",bankRekening:"812 69 2121 8",logo:"",logoPertamina:"",ttdKasir:"",ttdDirektur:"",stempelLunas:"",direkturNama:"Muhammad Haekal",kasirNama:"MANARUL HIDAYAT"}
+company:{nama:"PT. HOE TRANG SA",alamat:"Jl. Jendral Sudirman No.80, Geuce Iniem, Kec. Banda Raya, Kota Banda Aceh",telepon:"0812 6900 2121",telepon2:"(0651) 21221",email:"npso.pthoetrangsa@gmail.com",website:"pt-hoetrangsa.business.site",npwp:"",slogan:"DEALER LPG PERTAMINA",bankNama:"BSI",bankAtasNama:"PT. HOE TRANG SA",bankRekening:"812 69 2121 8",logo:"",logoPertamina:"",ttdKasir:"",ttdDirektur:"",stempelLunas:"",direkturNama:"Muhammad Haekal",kasirNama:"MANARUL HIDAYAT",soldTo:"731070",shipToKCR:"862070",shipToMGL:"782092",saBulan:"Juni 2026",sa12KCR:"2845075",sa55KCR:"2845111",sa12MGL:"",sa55MGL:""}
 };
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -290,7 +293,7 @@ return <div>
 <div style={{overflowX:"auto"}}>
 <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
 <thead>
-<tr>{columns.map(c=><th key={c.key} onClick={()=>toggleSort(c.key)} style={{padding:"8px 10px",background:C.nav,color:C.gl2,fontWeight:700,textAlign:"left",fontSize:11,borderBottom:"2px solid "+C.bdr,whiteSpace:"nowrap",cursor:c.sortable!==false?"pointer":"default",userSelect:"none"}}>{c.label}{c.sortable!==false&&<span style={{marginLeft:4,color:sort.key===c.key?C.blt:C.gry,fontSize:9}}>{sort.key===c.key?(sort.dir==="asc"?"▲":"▼"):"⇅"}</span>}</th>)}</tr>
+<tr>{columns.map(c=><th key={c.key} onClick={()=>toggleSort(c.key)} style={{padding:"8px 10px",background:C.nav,color:C.gl2,fontWeight:700,textAlign:"left",fontSize:11,borderBottom:"2px solid "+C.bdr,whiteSpace:"nowrap",cursor:c.sortable!==false?"pointer":"default",userSelect:"none",width:c.width?(typeof c.width==="number"?c.width+"px":c.width):undefined,minWidth:c.width?(typeof c.width==="number"?c.width+"px":c.width):undefined}}>{c.label}{c.sortable!==false&&<span style={{marginLeft:4,color:sort.key===c.key?C.blt:C.gry,fontSize:9}}>{sort.key===c.key?(sort.dir==="asc"?"▲":"▼"):"⇅"}</span>}</th>)}</tr>
 <tr>{columns.map(c=><th key={c.key+"_f"} style={{padding:"4px 6px",background:C.bg,borderBottom:"1px solid "+C.bdr}}>{c.filterable===false?<span/>:c.filterType==="select"?<select value={hdrFilters[c.key]||""} onChange={e=>setFilter(c.key,e.target.value)} style={{width:"100%",background:C.card,border:"1px solid "+C.bdr,borderRadius:5,padding:"3px 5px",fontSize:11,color:C.wht,outline:"none"}}><option value="">Semua</option>{(c.options||[]).map(o=><option key={o.v||o} value={o.v||o}>{o.l||o}</option>)}</select>:<input value={hdrFilters[c.key]||""} onChange={e=>setFilter(c.key,e.target.value)} placeholder="Filter..." style={{width:"100%",background:C.card,border:"1px solid "+C.bdr,borderRadius:5,padding:"3px 6px",fontSize:11,color:C.wht,outline:"none"}}/>}</th>)}</tr>
 </thead>
 <tbody>
@@ -750,7 +753,7 @@ var canSelf=PENJUALAN_ROLES.includes(user?.role)&&!["owner","admin","akuntan"].i
 var[f,setF]=useState({tanggal:toDay(),salesId:canSelf?user.id:"",konsumen:"",konsumenId:"",items:[{...blk}],bayar:"cash",bank:"BSI",deadline:"",ket:""});
 var[delId,setDelId]=useState(null);
 var[barFilter,setBarFilter]=useState({from:"",to:"",salesId:"",konsumen:"",bayar:""});
-var salesEmp=(data.employees||[]).filter(e=>e.aktif&&PENJUALAN_ROLES.includes(e.role));
+var salesEmp=sortEmp((data.employees||[]).filter(e=>e.aktif&&PENJUALAN_ROLES.includes(e.role)));
 var valid=f.items.filter(it=>Number(it.qty)>0&&Number(it.price)>0);
 var total=iTotal(valid);var margin=calcMargin(valid,data,f.tanggal);
 var kNames=[...new Set([...(data.pelanggan||[]).map(p=>p.nama),...(data.penjualan||[]).map(e=>e.konsumen)].filter(Boolean))];
@@ -763,7 +766,7 @@ if(!valid.length||!f.konsumen)return;
 var ns={...data.stock};valid.forEach(it=>{ns[it.ukuran]=Math.max(0,(ns[it.ukuran]||0)-Number(it.qty));});
 var invInfo=nextInvNo(data,f.tanggal);
 var newCounters={...(data.counters||{inv:{},sg:{},reg:0})};if(!newCounters.inv)newCounters.inv={};newCounters.inv[invInfo.key]=invInfo.n;
-var entry={id:uid(),noInv:invInfo.no,tanggal:f.tanggal,salesId:f.salesId,konsumen:f.konsumen,konsumenId:f.konsumenId,items:valid.map(it=>({...it,qty:Number(it.qty),price:Number(it.price)})),total,margin,bayar:f.bayar,bank:f.bank,deadline:f.deadline,ket:f.ket};
+var entry={id:uid(),noInv:invInfo.no,tanggal:f.tanggal,waktu:new Date().toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"}),salesId:f.salesId,konsumen:f.konsumen,konsumenId:f.konsumenId,items:valid.map(it=>({...it,qty:Number(it.qty),price:Number(it.price)})),total,margin,bayar:f.bayar,bank:f.bank,deadline:f.deadline,ket:f.ket};
 var nb=(data.bon||[]).slice();
 if(f.bayar==="bon")nb.unshift({id:uid(),noInv:invInfo.no,tanggal:f.tanggal,konsumen:f.konsumen,konsumenId:f.konsumenId,salesId:f.salesId,items:valid,total,sisaTagihan:total,deadline:f.deadline,status:"belum",pembayaran:[],ket:f.ket,bank:f.bank});
 setData(d=>({...d,penjualan:[entry,...(d.penjualan||[])],stock:ns,bon:nb,counters:newCounters}));
@@ -780,18 +783,18 @@ if(barFilter.salesId&&p.salesId!==barFilter.salesId)return false;
 if(barFilter.konsumen&&!p.konsumen.toLowerCase().includes(barFilter.konsumen.toLowerCase()))return false;
 if(barFilter.bayar&&p.bayar!==barFilter.bayar)return false;
 return true;
-}).map(p=>{var emp=(data.employees||[]).find(e=>e.id===p.salesId);var detail=(p.items||[]).map(it=>it.qty+"×"+it.ukuran+" "+it.jenis).join(", ");return{...p,salesNama:emp?.nama||"-",detailStr:detail,_qty:(p.items||[]).reduce((a,x)=>a+Number(x.qty||0),0)};});
+}).map(p=>{var emp=(data.employees||[]).find(e=>e.id===p.salesId);var detailStr=(p.items||[]).map(it=>it.qty+"×"+it.ukuran).join(", ");return{...p,salesNama:emp?.nama||"-",detailStr};});
 },[data.penjualan,data.employees,barFilter]);
+var SZ_CLR={"5.5 kg":[C.grn,"#0A2E14"],"12 kg":[C.blt,"#0A2040"],"50 kg":[C.olt,"#3D200A"]};
 var cols=[
-{key:"tanggal",label:"Tgl",render:r=>fDs(r.tanggal),sortVal:r=>r.tanggal,filterable:true},
-{key:"noInv",label:"No.Invoice",render:r=><span style={{fontSize:11,color:C.blt,fontWeight:700}}>{r.noInv||"-"}</span>,filterable:true},
-{key:"konsumen",label:"Konsumen",render:r=><b style={{color:C.wht}}>{r.konsumen}</b>,filterable:true},
-{key:"salesNama",label:"Sales",render:r=>r.salesNama,filterable:true},
-{key:"detailStr",label:"Produk",render:r=><span style={{fontSize:11,color:C.gl2}}>{r.detailStr}</span>,filterable:true},
-{key:"_qty",label:"Qty",render:r=><b style={{color:C.glt}}>{r._qty}</b>,filterable:false,sortable:true},
-{key:"total",label:"Total",render:r=><b style={{color:C.wht}}>{fR(r.total)}</b>,filterable:false},
-{key:"bayar",label:"Bayar",render:r=>r.bayar==="bon"?<Bdg color="red">BON</Bdg>:r.bayar==="transfer"?<Bdg color="blue">TF</Bdg>:<Bdg color="green">Cash</Bdg>,filterable:true,filterType:"select",options:[{v:"cash",l:"Cash"},{v:"transfer",l:"Transfer"},{v:"bon",l:"BON"}]},
-{key:"_aksi",label:"Aksi",sortable:false,filterable:false,render:r=><div style={{display:"flex",gap:4}}><button onClick={()=>setInv(makeInvObj(r))} title="Cetak Invoice" style={{background:C.inHv,border:"1px solid "+C.blt,borderRadius:6,padding:"4px 7px",color:C.blt,cursor:"pointer",fontSize:12}}>🖨️</button><button onClick={()=>setDelId(r)} style={{background:C.inHvE,border:"1px solid "+C.rlt,borderRadius:6,padding:"4px 7px",color:C.rlt,cursor:"pointer",fontSize:12}}>🗑️</button></div>},
+{key:"tanggal",label:"Tgl",width:72,render:r=><div><div style={{fontSize:12,fontWeight:600,color:C.wht,whiteSpace:"nowrap"}}>{fDs(r.tanggal)}</div><div style={{fontSize:10,color:C.gl2,marginTop:2}}>{r.waktu||""}</div></div>,sortVal:r=>r.tanggal,filterable:true},
+{key:"noInv",label:"No.Invoice",width:69,render:r=>{var parts=(r.noInv||"-").split("/").reduce((a,p,i)=>i===0?[p]:i===1?[a[0]+"/"+p]:i===2?[...a,p+"/"]:[...a.slice(0,-1),a[a.length-1]+p],[]);var half=Math.ceil((r.noInv||"").split("/").length/2);var top=(r.noInv||"").split("/").slice(0,2).join("/");var bot=(r.noInv||"").split("/").slice(2).join("/");return <div style={{fontSize:11,color:C.blt,fontWeight:700,lineHeight:1.4}}><div>{top}/</div><div>{bot}</div></div>;},filterable:true},
+{key:"konsumen",label:"Konsumen",render:r=><b style={{color:C.wht,display:"block",minWidth:120}}>{r.konsumen}</b>,filterable:true,width:127},
+{key:"salesNama",label:"Sales",render:r=><span style={{fontSize:11}}>{r.salesNama}</span>,filterable:true,width:69},
+{key:"detailStr",label:"Produk & Qty",render:r=>{var items=r.items||[];var show=items.slice(0,3);var more=items.length-3;return <div style={{display:"flex",flexDirection:"column",gap:3,width:125,maxWidth:125}}>{show.map((it,i)=>{var clr=SZ_CLR[it.ukuran]||[C.gl2,C.bg];return <div key={i} style={{display:"flex",alignItems:"center",gap:4,paddingBottom:i<show.length-1?2:0,borderBottom:i<show.length-1?"1px dashed "+C.bdr:"none"}}><span style={{background:clr[1],border:"1px solid "+clr[0],borderRadius:3,padding:"1px 5px",fontSize:9,fontWeight:700,color:clr[0],whiteSpace:"nowrap",flexShrink:0,minWidth:42,textAlign:"center"}}>{it.ukuran}</span><span style={{fontSize:10.5,color:C.gl2,whiteSpace:"nowrap",flexShrink:0}}>{it.jenis==="Tabung+Isi"?"Tbg+Isi":"Refill"}</span><b style={{fontSize:12,fontWeight:800,color:C.wht,whiteSpace:"nowrap",marginLeft:"auto"}}>{it.qty}</b></div>;})}{ more>0&&<div style={{fontSize:10,color:C.gry,fontStyle:"italic"}}>+{more} item lagi</div>}</div>;},filterable:true,sortable:false},
+{key:"total",label:"Total",render:r=><b style={{color:C.wht,whiteSpace:"nowrap"}}>{fR(r.total)}</b>,filterable:false,sortVal:r=>r.total,width:98},
+{key:"bayar",label:"Bayar",render:r=>r.bayar==="bon"?<Bdg color="red">BON</Bdg>:r.bayar==="transfer"?<Bdg color="blue">TF</Bdg>:<Bdg color="green">Cash</Bdg>,filterable:true,filterType:"select",options:[{v:"cash",l:"Cash"},{v:"transfer",l:"Transfer"},{v:"bon",l:"BON"}],width:47},
+{key:"_aksi",label:"Aksi",sortable:false,filterable:false,width:63,render:r=><div style={{display:"flex",gap:4}}><button onClick={()=>setInv(makeInvObj(r))} title="Cetak Invoice" style={{background:C.inHv,border:"1px solid "+C.blt,borderRadius:6,padding:"4px 7px",color:C.blt,cursor:"pointer",fontSize:12}}>🖨️</button><button onClick={()=>setDelId(r)} style={{background:C.inHvE,border:"1px solid "+C.rlt,borderRadius:6,padding:"4px 7px",color:C.rlt,cursor:"pointer",fontSize:12}}>🗑️</button></div>},
 ];
 return <div>
 <STitle icon="🧾" children="Input Penjualan"/>
@@ -931,7 +934,33 @@ setF(p=>({...p,noDO:"",qty:"",ket:""}));
 toast("✓ DO dicatat! HPP "+fR(hpp)+"/unit jadi referensi.");
 }
 return <div>
-<STitle icon="🚚" children="Delivery Order"/>
+<div style={{marginBottom:12}}>
+<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+<span style={{fontSize:20}}>🚚</span>
+<span style={{fontSize:18,fontWeight:800,color:C.wht}}>Delivery Order</span>
+</div>
+{/* Bar kode Pertamina — memanjang tipis di bawah judul */}
+<div style={{background:C.card,border:"1px solid "+C.bdr,borderRadius:8,padding:"8px 14px",display:"flex",alignItems:"center",gap:0,flexWrap:"wrap",overflow:"hidden"}}>
+{/* Bulan SA */}
+{data.company?.saBulan&&<div style={{display:"flex",alignItems:"center",gap:6,paddingRight:14,borderRight:"1px solid "+C.bdr,marginRight:14}}>
+<span style={{fontSize:8,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:C.gl2}}>SA Aktif</span>
+<span style={{fontSize:11,fontWeight:700,color:C.olt}}>{data.company.saBulan}</span>
+</div>}
+{/* Kode penebusan */}
+{[["Sold To",data.company?.soldTo],["Ship To KCR",data.company?.shipToKCR],["Ship To MGL",data.company?.shipToMGL]].map(([l,v])=>v?<div key={l} style={{display:"flex",alignItems:"center",gap:5,paddingRight:14,borderRight:"1px solid "+C.bdr,marginRight:14}}>
+<span style={{fontSize:8,color:C.gl2,fontWeight:600,whiteSpace:"nowrap"}}>{l}:</span>
+<span style={{fontSize:11,fontWeight:800,color:C.blt,fontFamily:"'Courier New',monospace"}}>{v}</span>
+</div>:null)}
+{/* SA per SPPBE */}
+{[["KCR",[["12kg",data.company?.sa12KCR],["5,5kg",data.company?.sa55KCR]]],["MGL",[["12kg",data.company?.sa12MGL],["5,5kg",data.company?.sa55MGL]]]].map(([loc,items])=><div key={loc} style={{display:"flex",alignItems:"center",gap:6,paddingRight:14,borderRight:"1px solid "+C.bdr,marginRight:14,flexWrap:"wrap"}}>
+<span style={{fontSize:8,fontWeight:700,color:C.olt,letterSpacing:.5}}>{loc}:</span>
+{items.map(([l,v])=><div key={l} style={{display:"flex",alignItems:"center",gap:3}}>
+<span style={{fontSize:8,color:C.gl2}}>{l}</span>
+{v?<span style={{fontSize:11,fontWeight:800,color:C.glt,fontFamily:"'Courier New',monospace"}}>{v}</span>:<span style={{fontSize:9,color:C.gry,fontStyle:"italic"}}>-</span>}
+</div>)}
+</div>)}
+</div>
+</div>
 <Card>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10}}>
 <Inp label="Tanggal" type="date" value={f.tanggal} onChange={onTanggal}/>
@@ -966,7 +995,7 @@ var C=useTheme();
 var[openId,setOpenId]=useState(null);var[delId,setDelId]=useState(null);
 var[bF,setBF]=useState({nominal:"",metode:"cash",bank:"BSI",salesPenerimaId:""});
 var[barFilter,setBarFilter]=useState({from:"",to:"",salesId:"",konsumen:"",status:""});
-var salesList=(data.employees||[]).filter(e=>e.aktif);
+var salesList=sortEmp((data.employees||[]).filter(e=>e.aktif));
 function makeBonInvObj(b){var plg=(data.pelanggan||[]).find(x=>x.id===b.konsumenId);return{noInv:b.noInv||"#HTS/INV/-/-",tanggal:b.tanggal,konsumen:b.konsumen,kota:plg?.alamat?.split(",").pop()?.trim()||"Banda Aceh",items:(b.items||[]).map(it=>({ukuran:it.ukuran,jenis:it.jenis,qty:Number(it.qty),price:Number(it.price)})),total:b.total,metodeBayar:"BON",isBon:true,catatan:b.ket||""};}
 function bayar(b){
 if(!bF.nominal)return;var nom=Number(bF.nominal);var newSisa=Math.max(0,b.sisaTagihan-nom);var st=newSisa===0?"lunas":"sebagian";
@@ -989,7 +1018,7 @@ return true;
 },[data.bon,data.employees,barFilter]);
 var cols=[
 {key:"tanggal",label:"Tgl",render:r=>fDs(r.tanggal),sortVal:r=>r.tanggal,filterable:true},
-{key:"konsumen",label:"Konsumen",render:r=><b style={{color:C.wht}}>{r.konsumen}</b>,filterable:true},
+{key:"konsumen",label:"Konsumen",render:r=><b style={{color:C.wht,display:"block",minWidth:120}}>{r.konsumen}</b>,filterable:true,width:127},
 {key:"salesNama",label:"Sales",filterable:true},
 {key:"deadline",label:"Jatuh Tempo",render:r=>r.deadline?<span style={{color:r.dl<0&&r.status!=="lunas"?C.rlt:r.dl<=3&&r.status!=="lunas"?C.olt:C.gl2}}>{fDs(r.deadline)}{r.status!=="lunas"&&r.dl!=null?" ("+(r.dl<0?Math.abs(r.dl)+"h LEWAT":r.dl+"h)"):""}</span>:"-",filterable:false},
 {key:"total",label:"Total",render:r=>fR(r.total),filterable:false},
@@ -1043,7 +1072,7 @@ var C=useTheme();
 var[bulan,setBulan]=useState(toMonth());
 var[viewSlip,setViewSlip]=useState(null);
 var[editSlip,setEditSlip]=useState(null);
-var emps=(data.employees||[]).filter(e=>e.aktif);
+var emps=sortEmp((data.employees||[]).filter(e=>e.aktif));
 
 function buildSlipRows(emp){
 var r=calcPayrollFull(emp,bulan,data);
@@ -1218,7 +1247,7 @@ var C=useTheme();
 var[f,setF]=useState({tanggal:toDay(),kategori:"BBM",kategoriCustom:"",keperluan:"perusahaan",ket:"",nominal:"",metode:"cash",bank:"BSI"});
 var[delId,setDelId]=useState(null);
 var[barFilter,setBarFilter]=useState({from:"",to:"",kategori:"",keperluan:""});
-var karList=(data.employees||[]).filter(e=>e.aktif);
+var karList=sortEmp((data.employees||[]).filter(e=>e.aktif));
 var isLainnya=f.kategori==="Lainnya";
 function save(){
 if(!f.nominal||Number(f.nominal)<=0)return;
@@ -1302,8 +1331,9 @@ var isSales=user&&["sales_driver","sales_freelance"].includes(user.role);
 var[salesId,setSalesId]=useState(isSales?user.id:"");
 var[tgl,setTgl]=useState(toDay());
 var[pecah,setPecah]=useState(()=>{var o={};DENOMS.forEach(d=>{o[d]="";});return o;});
-var[opsMode,setOpsMode]=useState({});// {pengeluaranId: "setor"|"hutang"}
-var salesList=(data.employees||[]).filter(e=>e.aktif);
+var[jadikanPinjaman,setJadikanPinjaman]=useState(false);
+// Pengeluaran ops hanya catatan rekap, tidak jadi hutang
+var salesList=sortEmp((data.employees||[]).filter(e=>e.aktif));
 
 // Cash masuk dari penjualan hari itu
 var penjHari=(data.penjualan||[]).filter(p=>p.salesId===salesId&&p.tanggal===tgl&&p.bayar==="cash");
@@ -1314,29 +1344,27 @@ var piutangHari=(data.setoranSales||[]).filter(s=>s.salesId===salesId&&s.tanggal
 var cashPiutang=piutangHari.reduce((a,s)=>a+(s.nominal||0),0);
 var totalWajib=cashPenjualan+cashPiutang;
 
-// Pengeluaran operasional sales hari itu
+// Pengeluaran ops hari itu — hanya info rekap, tidak dipotong dari setoran
 var opsHari=(data.pengeluaran||[]).filter(p=>p.karyawanId===salesId&&p.tanggal===tgl&&KAT_OPS.includes(p.kategori));
-
-// Hitung total ops yang diputuskan "bayar dari setoran"
-var totalOpsSetor=opsHari.filter(op=>(opsMode[op.id]||"setor")==="setor").reduce((a,op)=>a+op.nominal,0);
-var bersihSetor=totalWajib-totalOpsSetor;
+var totalOpsHari=opsHari.reduce((a,op)=>a+op.nominal,0);
+var bersihSetor=totalWajib;// Setoran tidak dipotong ops
 var totalTunai=DENOMS.reduce((a,d)=>a+Number(pecah[d]||0)*d,0);
 var selisih=totalTunai-bersihSetor;
 
-function toggleOps(id){setOpsMode(p=>({...p,[id]:(p[id]||"setor")==="setor"?"hutang":"setor"}));}
+
 
 function konfirmasi(){
-// Tandai setoran penjualan
 var newSet=(data.setoranSales||[]).map(s=>{if(s.salesId===salesId&&s.tanggal===tgl&&!s.disetor)return{...s,disetor:true,tanggalSetor:tgl};return s;});
-// Ops yang "hutang" → tambah ke ambilan
-var newAmb=[...(data.ambilan||[])];
-opsHari.forEach(op=>{if((opsMode[op.id]||"setor")==="hutang"){var emp=(data.employees||[]).find(e=>e.id===salesId);newAmb.unshift({id:uid(),karyawanId:salesId,karyawanNama:emp?.nama||"",nominal:op.nominal,ket:"Ops hutang: "+op.kategori+(op.ket?" ("+op.ket+")":""),tanggal:tgl});}});
-// Simpan log setoran
 var emp=(data.employees||[]).find(e=>e.id===salesId);
-var logEntry={id:uid(),tanggal:tgl,salesId,salesNama:emp?.nama||"",cashPenjualan,cashPiutang,totalWajib,totalOpsSetor,bersihSetor,totalTunai,selisih};
+var newAmb=[...(data.ambilan||[])];
+// Kalau kurang setor dan user pilih jadikan pinjaman
+if(selisih<0&&jadikanPinjaman){
+newAmb.unshift({id:uid(),karyawanId:salesId,karyawanNama:emp?.nama||"",nominal:Math.abs(selisih),ket:"Kurang setor "+fDs(tgl),tanggal:tgl});
+}
+var logEntry={id:uid(),tanggal:tgl,salesId,salesNama:emp?.nama||"",cashPenjualan,cashPiutang,totalWajib,bersihSetor,totalTunai,selisih,jadikanPinjaman:selisih<0&&jadikanPinjaman};
 setData(d=>({...d,setoranSales:newSet,ambilan:newAmb,setoranLog:[logEntry,...(d.setoranLog||[])]}));
 setPecah(()=>{var o={};DENOMS.forEach(d=>{o[d]="";});return o;});
-setOpsMode({});
+setJadikanPinjaman(false);
 toast("✓ Setoran dikonfirmasi! Selisih: "+fR(selisih));
 }
 
@@ -1345,8 +1373,8 @@ return <div>
 <STitle icon="💰" children="Setoran Sales"/>
 <Card>
 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-<Sel label="Sales" value={salesId} onChange={v=>{setSalesId(v);setOpsMode({});}} opts={[{v:"",l:"-- Pilih --"},...salesList.map(e=>({v:e.id,l:e.nama}))]}/>
-<Inp label="Tanggal" type="date" value={tgl} onChange={v=>{setTgl(v);setOpsMode({});}}/>
+<Sel label="Sales" value={salesId} onChange={v=>setSalesId(v)} opts={[{v:"",l:"-- Pilih --"},...salesList.map(e=>({v:e.id,l:e.nama}))]}/>
+<Inp label="Tanggal" type="date" value={tgl} onChange={v=>setTgl(v)}/>
 </div>
 </Card>
 {salesId&&<>
@@ -1357,19 +1385,16 @@ return <div>
 </div>
 {penjHari.length>0&&<div style={{marginBottom:8}}><div style={{fontSize:11,color:C.gl2,marginBottom:4}}>Detail penjualan cash:</div>{penjHari.map(p=><div key={p.id} style={{display:"flex",justifyContent:"space-between",padding:"3px 8px",background:C.bg,borderRadius:5,marginBottom:2,fontSize:12}}><span style={{color:C.gl2}}>{p.konsumen}</span><b style={{color:C.glt}}>{fR(p.total)}</b></div>)}</div>}
 </Card>
-{opsHari.length>0&&<Card style={{border:"1px solid "+C.org}}>
-<div style={{fontWeight:700,color:C.olt,marginBottom:10,fontSize:13}}>💳 Pengeluaran Operasional Hari Ini</div>
-<div style={{fontSize:11,color:C.gl2,marginBottom:8}}>Pilih: Bayar dari Setoran (langsung dipotong) atau Jadi Hutang Sales (ditambah ke pinjaman):</div>
-{opsHari.map(op=>{var mode=opsMode[op.id]||"setor";return <div key={op.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:C.nav,borderRadius:8,marginBottom:6,border:"1px solid "+C.bdr}}>
-<div><div style={{fontSize:12,fontWeight:700,color:C.wht}}>{op.kategori}</div><div style={{fontSize:11,color:C.gl2}}>{op.ket||""}</div></div>
-<div style={{display:"flex",alignItems:"center",gap:8}}>
+{opsHari.length>0&&<Card style={{border:"1px solid "+C.bdr}}>
+<div style={{fontWeight:700,color:C.gl2,marginBottom:8,fontSize:13}}>📋 Pengeluaran Operasional Hari Ini (Info)</div>
+<div style={{fontSize:11,color:C.gl2,marginBottom:8}}>Catatan rekap pengeluaran operasional — tidak dipotong dari setoran</div>
+{opsHari.map(op=><div key={op.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 12px",background:C.nav,borderRadius:8,marginBottom:4,border:"1px solid "+C.bdr}}>
+<div><div style={{fontSize:12,fontWeight:600,color:C.wht}}>{op.kategori}</div><div style={{fontSize:11,color:C.gl2}}>{op.ket||""}</div></div>
 <b style={{color:C.olt}}>{fR(op.nominal)}</b>
-<button onClick={()=>toggleOps(op.id)} style={{background:mode==="setor"?C.grn:C.rdk,color:"white",border:"none",borderRadius:6,padding:"5px 10px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>{mode==="setor"?"💵 Bayar":"💳 Hutang"}</button>
-</div>
-</div>;})}
-<div style={{display:"flex",justifyContent:"space-between",padding:"8px 12px",background:C.bg,borderRadius:6,border:"1px solid "+C.bdr,marginTop:4}}>
-<span style={{color:C.gl2,fontSize:12}}>Total ops dari setoran</span>
-<b style={{color:C.rlt}}>{fR(totalOpsSetor)}</b>
+</div>)}
+<div style={{display:"flex",justifyContent:"space-between",padding:"7px 12px",background:C.bg,borderRadius:6,border:"1px solid "+C.bdr,marginTop:4}}>
+<span style={{color:C.gl2,fontSize:12}}>Total ops hari ini</span>
+<b style={{color:C.olt}}>{fR(totalOpsHari)}</b>
 </div>
 </Card>}
 <Card>
@@ -1386,18 +1411,26 @@ return <div>
 <Card style={{border:"2px solid "+(Math.abs(selisih)<1000?C.glt:C.rlt)}}>
 <div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>🔄 Rekonsiliasi</div>
 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-{[["Total Wajib Setor",totalWajib,C.wht],["Total Ops (setor)",totalOpsSetor,C.rlt],["Bersih Wajib Setor",bersihSetor,C.blt],["Total Tunai Fisik",totalTunai,C.glt]].map(x=><div key={x[0]} style={{background:C.nav,borderRadius:8,padding:"8px 10px",border:"1px solid "+C.bdr}}><div style={{fontSize:10,color:C.gl2}}>{x[0]}</div><div style={{fontSize:13,fontWeight:900,color:x[2]}}>{fR(x[1])}</div></div>)}
+{[["Total Wajib Setor",totalWajib,C.wht],["Total Tunai Fisik",totalTunai,C.glt],["Selisih",selisih,selisih>=0?C.glt:C.rlt]].map(x=><div key={x[0]} style={{background:C.nav,borderRadius:8,padding:"8px 10px",border:"1px solid "+C.bdr}}><div style={{fontSize:10,color:C.gl2}}>{x[0]}</div><div style={{fontSize:13,fontWeight:900,color:x[2]}}>{fR(x[1])}</div></div>)}
 </div>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:Math.abs(selisih)<1000?C.grn:C.rdk,borderRadius:8,marginBottom:12}}>
 <span style={{color:"white",fontWeight:700}}>SELISIH {selisih>=0?"LEBIH":"KURANG"}</span>
 <b style={{color:"white",fontSize:18}}>{fR(Math.abs(selisih))}</b>
+</div>
+<div style={{marginBottom:8}}>
+{selisih<0&&<div style={{marginBottom:8}}>
+<label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"8px 12px",background:C.rdk,borderRadius:8}}>
+<input type="checkbox" checked={jadikanPinjaman} onChange={e=>setJadikanPinjaman(e.target.checked)} style={{width:16,height:16}}/>
+<span style={{color:"white",fontSize:12,fontWeight:700}}>💳 Jadikan pinjaman karyawan (kurang setor {fR(Math.abs(selisih))})</span>
+</label>
+</div>}
 </div>
 <Btn color="green" onClick={konfirmasi} dis={!salesId}>✓ Konfirmasi Setoran</Btn>
 </Card>
 </>}
 {riwayat.length>0&&<Card>
 <div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>📋 Riwayat Setoran</div>
-<RTbl headers={["Tgl","Sales","Wajib","Ops Setor","Bersih Setor","Tunai","Selisih"]} rows={riwayat.map(r=>[fDs(r.tanggal),r.salesNama,fR(r.totalWajib),fR(r.totalOpsSetor),fR(r.bersihSetor),fR(r.totalTunai),<b style={{color:Math.abs(r.selisih||0)<1000?C.glt:C.rlt}}>{fR(r.selisih||0)}</b>])}/>
+<RTbl headers={["Tgl","Sales","Wajib Setor","Tunai","Selisih"]} rows={riwayat.map(r=>[fDs(r.tanggal),r.salesNama,fR(r.totalWajib),fR(r.totalTunai),<b style={{color:Math.abs(r.selisih||0)<1000?C.glt:C.rlt}}>{fR(r.selisih||0)}</b>])}/>
 </Card>}
 </div>;
 }
@@ -1408,6 +1441,7 @@ var C=useTheme();var[tab,setTab]=useState("harian");
 var[tgl,setTgl]=useState(toDay());var[bln,setBln]=useState(toMonth());
 var[cashLaci,setCashLaci]=useState("");var[rekBSI,setRekBSI]=useState("");var[rekBCA,setRekBCA]=useState("");
 var[pecah,setPecah]=useState(()=>{var o={};DENOMS.forEach(d=>{o[d]="";});return o;});
+var[jadikanPinjaman,setJadikanPinjaman]=useState(false);
 
 // Harian P&L
 var pHari=(data.penjualan||[]).filter(e=>e.tanggal===tgl);
@@ -1700,6 +1734,21 @@ return <div>
 <Card><div style={{fontWeight:700,color:C.gl2,marginBottom:12,fontSize:13}}>📦 Update Modal/HPP Manual</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:10}}><Sel label="Jenis" value={mP.jenis} onChange={v=>setMP(p=>({...p,jenis:v}))} opts={JENIS}/><Sel label="Ukuran" value={mP.ukuran} onChange={v=>setMP(p=>({...p,ukuran:v}))} opts={SIZES}/><Inp label={"Modal ("+fR(getModal(data,mP.ukuran,mP.jenis))+")"} type="number" value={mP.harga} onChange={v=>setMP(p=>({...p,harga:v}))}/><Inp label="Berlaku Dari" type="date" value={mP.tgl} onChange={v=>setMP(p=>({...p,tgl:v}))}/></div>
 <Btn color="green" onClick={saveModal} dis={!mP.harga}>💾 Update Modal</Btn></Card>
+<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:12,fontSize:13}}>🏭 Kode Pertamina</div>
+<div style={{fontSize:11,color:C.gl2,marginBottom:10,fontStyle:"italic"}}>🔒 Kode penebusan (permanen — tidak berubah)</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10,marginBottom:12}}>
+{[["soldTo","Sold To"],["shipToKCR","Ship To KCR"],["shipToMGL","Ship To MGL"]].map(([k,l])=><Inp key={k} label={l} value={f[k]||""} onChange={v=>setF(p=>({...p,[k]:v}))}/>)}
+</div>
+<div style={{fontSize:11,color:C.olt,marginBottom:10,fontStyle:"italic"}}>🔄 Kode SA bulanan (update setiap bulan terima SA baru dari Pertamina)</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10}}>
+<Inp label="Bulan SA Aktif" value={f.saBulan||""} onChange={v=>setF(p=>({...p,saBulan:v}))} placeholder="Juni 2026"/>
+<Inp label="SA 12kg — KCR" value={f.sa12KCR||""} onChange={v=>setF(p=>({...p,sa12KCR:v}))}/>
+<Inp label="SA 5,5kg — KCR" value={f.sa55KCR||""} onChange={v=>setF(p=>({...p,sa55KCR:v}))}/>
+<Inp label="SA 12kg — MGL" value={f.sa12MGL||""} onChange={v=>setF(p=>({...p,sa12MGL:v}))}/>
+<Inp label="SA 5,5kg — MGL" value={f.sa55MGL||""} onChange={v=>setF(p=>({...p,sa55MGL:v}))}/>
+</div>
+<Btn color="blue" onClick={saveCompany} style={{marginTop:10}}>💾 Simpan Kode Pertamina</Btn>
+</Card>
 <Card><div style={{fontWeight:700,color:C.gl2,marginBottom:12,fontSize:13}}>💾 Backup & Data</div><div style={{display:"flex",gap:8,flexWrap:"wrap"}}><Btn color="green" onClick={backup}>📥 Export Backup JSON</Btn><Btn color="red" onClick={clearData}>🗑️ Hapus Semua Transaksi</Btn></div></Card>
 </div>;
 }
