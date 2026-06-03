@@ -1,6 +1,6 @@
 // === HOETRANGSA v4 — BAGIAN 1 DARI 3 ===
 import { useState, useEffect, useCallback, useRef, useMemo, createContext, useContext } from "react";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, ReferenceLine } from "recharts";
 import * as XLSX from "xlsx";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -1749,7 +1749,10 @@ var penB=(data.pengeluaran||[]).filter(e=>(e.tanggal||"").startsWith(bln));
 var totalOutB=penB.reduce((a,e)=>a+Number(e.nominal||0),0);
 var labaBersihB=marginB-totalOutB;
 var dim=daysInMonth(bln);
-var chartDataB=[];for(var d=1;d<=dim;d++){var ds=bln+"-"+String(d).padStart(2,"0");var pp=pBln.filter(x=>x.tanggal===ds);var oz=pp.reduce((a,x)=>a+(x.total||0),0);var mg=pp.reduce((a,x)=>a+(x.margin||0),0);var pn=penB.filter(x=>x.tanggal===ds).reduce((a,x)=>a+Number(x.nominal||0),0);chartDataB.push({hari:String(d),omzet:oz,labaBersih:mg-pn});}
+var doBln=(data.doList||[]).filter(e=>(e.tanggal||"").startsWith(bln)&&(e.status||"diterima")==="diterima");
+var hppBln=doBln.reduce((a,e)=>a+Number(e.totalHPP||0),0);
+var cashFlowKumul=0;
+var chartDataB=[];for(var d=1;d<=dim;d++){var ds=bln+"-"+String(d).padStart(2,"0");var pp=pBln.filter(x=>x.tanggal===ds);var oz=pp.reduce((a,x)=>a+(x.total||0),0);var mg=pp.reduce((a,x)=>a+(x.margin||0),0);var pn=penB.filter(x=>x.tanggal===ds).reduce((a,x)=>a+Number(x.nominal||0),0);var hpp=doBln.filter(x=>x.tanggal===ds).reduce((a,x)=>a+Number(x.totalHPP||0),0);var labaBersih=mg-pn;cashFlowKumul+=labaBersih;chartDataB.push({hari:String(d),omzet:oz,hpp,marginKotor:mg,pengeluaran:pn,labaBersih,cashFlow:cashFlowKumul});}
 // Top 5 hari omzet
 var top5=chartDataB.slice().sort((a,b)=>b.omzet-a.omzet).slice(0,5);
 // Pengeluaran per kategori bulanan
@@ -1917,14 +1920,53 @@ return <div>
 <Card><MonthPicker label="Pilih Bulan" value={bln} onChange={setBln}/></Card>
 <Card style={{border:"1px solid "+C.blt}}>
 <div style={{fontWeight:700,color:C.blt,marginBottom:12,fontSize:13}}>📊 P&L Bulanan — {BULAN_ID[Number(bln.split("-")[1])-1]} {bln.split("-")[0]}</div>
-<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8,marginBottom:10}}>
-{[["Omzet",omzetB,C.wht],["Laba Kotor",marginB,C.blt],["Pengeluaran",totalOutB,C.rlt],["Laba Bersih",labaBersihB,labaBersihB>=0?C.glt:C.rlt]].map(x=><div key={x[0]} style={{background:C.nav,borderRadius:8,padding:"8px 10px",border:"1px solid "+C.bdr}}><div style={{fontSize:10,color:C.gl2}}>{x[0]}</div><div style={{fontSize:14,fontWeight:900,color:x[2]}}>{fR(x[1])}</div></div>)}
+{/* Summary cards */}
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8,marginBottom:14}}>
+{[["Total Omzet",omzetB,C.wht],["HPP/Modal (DO)",hppBln,C.olt],["Margin Kotor",marginB,C.blt],["Pengeluaran Ops",totalOutB,C.rlt],["Laba Bersih",labaBersihB,labaBersihB>=0?C.glt:C.rlt]].map(x=><div key={x[0]} style={{background:C.nav,borderRadius:8,padding:"8px 10px",border:"1px solid "+C.bdr}}><div style={{fontSize:10,color:C.gl2}}>{x[0]}</div><div style={{fontSize:13,fontWeight:900,color:x[2]}}>{fR(x[1])}</div></div>)}
 </div>
-{chartDataB.some(d=>d.omzet>0)&&<ResponsiveContainer width="100%" height={200}><AreaChart data={chartDataB}><CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/><XAxis dataKey="hari" stroke={C.gl2} fontSize={10}/><YAxis stroke={C.gl2} fontSize={10} tickFormatter={v=>"Rp "+(v/1e6).toFixed(1)+"jt"}/><Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht}} formatter={v=>fR(v)}/><Area type="monotone" dataKey="omzet" stroke={C.blt} fill={C.blt} fillOpacity={0.3} name="Omzet"/><Area type="monotone" dataKey="labaBersih" stroke={C.glt} fill={C.glt} fillOpacity={0.3} name="Laba Bersih"/></AreaChart></ResponsiveContainer>}
+{/* Grafik 1: Omzet & HPP per hari */}
+{chartDataB.some(d=>d.omzet>0)&&<>
+<div style={{fontSize:11,fontWeight:700,color:C.gl2,marginBottom:6}}>📈 Omzet & Modal HPP per Hari</div>
+<ResponsiveContainer width="100%" height={180}><AreaChart data={chartDataB} margin={{top:4,right:8,bottom:0,left:8}}>
+<CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/>
+<XAxis dataKey="hari" stroke={C.gl2} fontSize={9}/>
+<YAxis stroke={C.gl2} fontSize={9} tickFormatter={v=>(v/1e6).toFixed(1)+"jt"}/>
+<Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht,fontSize:11}} formatter={v=>fR(v)}/>
+<Area type="monotone" dataKey="omzet" stroke={C.blt} fill={C.blt} fillOpacity={0.25} name="Omzet"/>
+<Area type="monotone" dataKey="hpp" stroke={C.olt} fill={C.olt} fillOpacity={0.2} name="HPP/Modal"/>
+</AreaChart></ResponsiveContainer>
+{/* Grafik 2: Margin & Pengeluaran */}
+<div style={{fontSize:11,fontWeight:700,color:C.gl2,marginBottom:6,marginTop:14}}>📊 Margin Kotor & Pengeluaran per Hari</div>
+<ResponsiveContainer width="100%" height={160}><BarChart data={chartDataB} margin={{top:4,right:8,bottom:0,left:8}}>
+<CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/>
+<XAxis dataKey="hari" stroke={C.gl2} fontSize={9}/>
+<YAxis stroke={C.gl2} fontSize={9} tickFormatter={v=>(v/1e6).toFixed(1)+"jt"}/>
+<Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht,fontSize:11}} formatter={v=>fR(v)}/>
+<Bar dataKey="marginKotor" fill={C.blt} name="Margin Kotor" opacity={0.8}/>
+<Bar dataKey="pengeluaran" fill={C.rlt} name="Pengeluaran" opacity={0.8}/>
+</BarChart></ResponsiveContainer>
+{/* Grafik 3: Cash Flow Kumulatif */}
+<div style={{fontSize:11,fontWeight:700,color:C.gl2,marginBottom:6,marginTop:14}}>💰 Cash Flow Kumulatif (Laba Bersih per Hari)</div>
+<ResponsiveContainer width="100%" height={160}><AreaChart data={chartDataB} margin={{top:4,right:8,bottom:0,left:8}}>
+<CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/>
+<XAxis dataKey="hari" stroke={C.gl2} fontSize={9}/>
+<YAxis stroke={C.gl2} fontSize={9} tickFormatter={v=>(v/1e6).toFixed(1)+"jt"}/>
+<Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht,fontSize:11}} formatter={v=>fR(v)}/>
+<Area type="monotone" dataKey="cashFlow" stroke={C.glt} fill={C.glt} fillOpacity={0.3} name="Cash Flow Kumulatif"/>
+<Area type="monotone" dataKey="labaBersih" stroke="#F59E0B" fill="#F59E0B" fillOpacity={0.15} name="Laba Bersih Harian"/>
+</AreaChart></ResponsiveContainer>
+</>}
 </Card>
 {top5.some(x=>x.omzet>0)&&<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:8,fontSize:13}}>🏆 Top 5 Hari (Omzet)</div><RTbl headers={["Hari","Omzet","Laba Bersih"]} rows={top5.map(x=>[bln+"-"+x.hari,<b style={{color:C.blt}}>{fR(x.omzet)}</b>,<b style={{color:x.labaBersih>=0?C.glt:C.rlt}}>{fR(x.labaBersih)}</b>])}/></Card>}
 {katPenArr.length>0&&<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:8,fontSize:13}}>💸 Pengeluaran per Kategori</div><RTbl headers={["Kategori","Total","% dari Pengeluaran"]} rows={katPenArr.map(([k,v])=>[k,<b style={{color:C.rlt}}>{fR(v)}</b>,(totalOutB>0?(v/totalOutB*100).toFixed(1):0)+"%"])}/></Card>}
-<AssetSection/>
+<Card>
+<div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>💰 Input Cash untuk Simpan Bulanan</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8,marginBottom:10}}>
+<Inp label="Cash di Laci (Rp)" type="number" value={cashLaci} onChange={setCashLaci}/>
+<Inp label="Saldo Bank BSI (Rp)" type="number" value={rekBSI} onChange={setRekBSI}/>
+<Inp label="Saldo Bank BCA (Rp)" type="number" value={rekBCA} onChange={setRekBCA}/>
+</div>
+</Card>
 <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
 <Btn color="green" onClick={saveBulanan}>💾 Simpan</Btn>
 <button onClick={()=>doPrint("_tb_bln")} style={{background:C.blu,color:"#fff",border:"none",padding:"9px 16px",borderRadius:8,fontSize:13,cursor:"pointer",fontWeight:700}}>🖨️ Cetak</button>
@@ -2049,7 +2091,22 @@ var detailRows=penjFilt.map(p=>{var emp=(data.employees||[]).find(e=>e.id===p.sa
 
 // Chart (hanya bulanan)
 var chartData=[];
-if(mode==="bulanan"){var dim2=daysInMonth(bln);for(var d=1;d<=dim2;d++){var ds=bln+"-"+String(d).padStart(2,"0");var pp=penjAll.filter(x=>x.tanggal===ds);var oz=pp.reduce((a,x)=>a+(x.total||0),0);var mg=pp.reduce((a,x)=>a+(x.margin||0),0);var pn=(data.pengeluaran||[]).filter(x=>x.tanggal===ds).reduce((a,x)=>a+Number(x.nominal||0),0);chartData.push({tgl:String(d),omzet:oz,labaBersih:mg-pn});}}
+if(mode==="bulanan"){
+  var dim2=daysInMonth(bln);
+  var cfKumul=0;
+  var doBlnLap=(data.doList||[]).filter(e=>(e.tanggal||"").startsWith(bln)&&(e.status||"diterima")==="diterima");
+  for(var d=1;d<=dim2;d++){
+    var ds=bln+"-"+String(d).padStart(2,"0");
+    var pp=penjAll.filter(x=>x.tanggal===ds);
+    var oz=pp.reduce((a,x)=>a+(x.total||0),0);
+    var mg=pp.reduce((a,x)=>a+(x.margin||0),0);
+    var pn=(data.pengeluaran||[]).filter(x=>x.tanggal===ds).reduce((a,x)=>a+Number(x.nominal||0),0);
+    var hpp=doBlnLap.filter(x=>x.tanggal===ds).reduce((a,x)=>a+Number(x.totalHPP||0),0);
+    var lb=mg-pn;
+    cfKumul+=lb;
+    chartData.push({tgl:String(d),omzet:oz,hpp,marginKotor:mg,pengeluaran:pn,labaBersih:lb,cashFlow:cfKumul});
+  }
+}
 
 function exportExcel(){
 var wb=XLSX.utils.book_new();
@@ -2077,10 +2134,10 @@ return <div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10,marginBottom:14}}>
 {[["Omzet",omzet,C.wht,"📈"],["Laba Kotor",margin,C.blt,"💹"],["Pengeluaran",pengeluaran,C.rlt,"💸"],["Laba Bersih",labaBersih,labaBersih>=0?C.glt:C.rlt,"🏆"],["Transaksi",penjFilt.length+" trx",C.gl2,"🧾"]].map(x=><SC key={x[0]} label={x[0]} value={typeof x[1]==="number"?fR(x[1]):x[1]} icon={x[3]} color={x[2]}/>)}
 </div>
-<div style={{display:"flex",gap:5,marginBottom:14,flexWrap:"wrap"}}>{[["ringkasan","📊 Ringkasan"],["sales","👤 Per Sales"],["kategori","🏷️ Per Kategori"],["produk","📦 Per Produk"],["pelanggan","👥 Per Pelanggan"],["matrix","📋 Sales×Kategori"],["detail","🔍 Detail"]].map(x=><button key={x[0]} onClick={()=>setTab(x[0])} style={{background:tab===x[0]?C.blu:C.nav,color:tab===x[0]?"white":C.wht,border:"1px solid "+(tab===x[0]?C.blt:C.bdr),borderRadius:8,padding:"6px 11px",fontWeight:700,fontSize:11,cursor:"pointer"}}>{x[1]}</button>)}</div>
+<div style={{display:"flex",gap:5,marginBottom:14,flexWrap:"wrap"}}>{[["ringkasan","📊 Ringkasan"],["grafik","📈 Grafik"],["sales","👤 Per Sales"],["kategori","🏷️ Per Kategori"],["produk","📦 Per Produk"],["pelanggan","👥 Per Pelanggan"],["matrix","📋 Sales×Kategori"],["detail","🔍 Detail"]].map(x=><button key={x[0]} onClick={()=>setTab(x[0])} style={{background:tab===x[0]?C.blu:C.nav,color:tab===x[0]?"white":C.wht,border:"1px solid "+(tab===x[0]?C.blt:C.bdr),borderRadius:8,padding:"6px 11px",fontWeight:700,fontSize:11,cursor:"pointer"}}>{x[1]}</button>)}</div>
 {tab==="ringkasan"&&<>
 <Card><div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>💰 Komposisi Pembayaran</div><div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>{[["Cash",cash,C.glt],["Transfer",tf,C.blt],["BON",bon,C.olt]].map(x=><div key={x[0]} style={{background:C.nav,borderRadius:8,padding:"10px 12px",border:"1px solid "+C.bdr,textAlign:"center"}}><div style={{fontSize:11,color:C.gl2}}>{x[0]}</div><div style={{fontSize:14,fontWeight:900,color:x[2]}}>{fR(x[1])}</div><div style={{fontSize:10,color:C.gl2,marginTop:2}}>{omzet>0?(x[1]/omzet*100).toFixed(1):0}%</div></div>)}</div></Card>
-{mode==="bulanan"&&chartData.some(d=>d.omzet>0)&&<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>📈 Tren Bulanan</div><ResponsiveContainer width="100%" height={240}><AreaChart data={chartData}><CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/><XAxis dataKey="tgl" stroke={C.gl2} fontSize={11}/><YAxis stroke={C.gl2} fontSize={11} tickFormatter={v=>"Rp "+(v/1e6).toFixed(1)+"jt"}/><Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht}} formatter={v=>fR(v)}/><Legend/><Area type="monotone" dataKey="omzet" stroke={C.blt} fill={C.blt} fillOpacity={0.3} name="Omzet"/><Area type="monotone" dataKey="labaBersih" stroke={C.glt} fill={C.glt} fillOpacity={0.3} name="Laba Bersih"/></AreaChart></ResponsiveContainer></Card>}
+
 </>}
 {tab==="sales"&&<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>👤 Per Sales</div><FilterTbl columns={salesCols} data={salesArr} empty="Tidak ada data"/></Card>}
 {tab==="kategori"&&<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>🏷️ Per Kategori Pelanggan</div><FilterTbl columns={katCols} data={katArr} empty="Tidak ada data"/>{katArr.length>0&&<div style={{marginTop:14}}><ResponsiveContainer width="100%" height={220}><PieChart><Pie data={katArr.slice(0,8)} dataKey="omzet" nameKey="kategori" cx="50%" cy="50%" outerRadius={80} label={x=>x.kategori}>{katArr.slice(0,8).map((e,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}</Pie><Tooltip formatter={v=>fR(v)} contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht}}/></PieChart></ResponsiveContainer></div>}</Card>}
@@ -2088,6 +2145,88 @@ return <div>
 {tab==="pelanggan"&&<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>👥 Ranking Pelanggan per Omzet</div><FilterTbl columns={plgCols} data={plgArr} empty="Tidak ada data"/></Card>}
 {tab==="matrix"&&<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>📋 Sales × Kategori</div><FilterTbl columns={skCols} data={skArr} empty="Tidak ada data"/></Card>}
 {tab==="detail"&&<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>🔍 Detail Penjualan ({penjFilt.length})</div><FilterTbl columns={detCols} data={detailRows} empty="Tidak ada data" maxRows={300}/></Card>}
+
+{tab==="grafik"&&<div>
+{mode!=="bulanan"?<Card><div style={{color:C.gl2,fontSize:13,textAlign:"center",padding:20}}>📈 Grafik hanya tersedia untuk mode Bulanan</div></Card>:
+!chartData.some(d=>d.omzet>0)?<Card><div style={{color:C.gl2,fontSize:13,textAlign:"center",padding:20}}>Belum ada data penjualan bulan ini</div></Card>:<>
+
+{/* Ringkasan bulanan */}
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8,marginBottom:14}}>
+{[["Total Omzet",omzet,C.wht,"📈"],["HPP/Modal DO",doBlnLap.reduce((a,d)=>a+Number(d.totalHPP||0),0),C.olt,"🏭"],["Margin Kotor",margin,C.blt,"💹"],["Pengeluaran Ops",pengeluaran,C.rlt,"💸"],["Laba Bersih",labaBersih,labaBersih>=0?C.glt:C.rlt,"🏆"],["Cash Flow Akhir",chartData[chartData.length-1]?.cashFlow||0,(chartData[chartData.length-1]?.cashFlow||0)>=0?C.glt:C.rlt,"💰"]].map(x=><div key={x[0]} style={{background:C.card,borderRadius:8,padding:"10px 12px",border:"1px solid "+C.bdr}}><div style={{fontSize:9,color:C.gl2,marginBottom:2}}>{x[3]} {x[0]}</div><div style={{fontSize:13,fontWeight:800,color:x[2]}}>{fR(x[1])}</div></div>)}
+</div>
+
+{/* Grafik 1: Omzet & HPP */}
+<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:8,fontSize:12}}>📈 1. Omzet Penjualan & Modal HPP per Hari</div>
+<ResponsiveContainer width="100%" height={200}><AreaChart data={chartData} margin={{top:4,right:10,bottom:0,left:10}}>
+<CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/>
+<XAxis dataKey="tgl" stroke={C.gl2} fontSize={9}/>
+<YAxis stroke={C.gl2} fontSize={9} tickFormatter={v=>(v/1e6).toFixed(1)+"jt"}/>
+<Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht,fontSize:11}} formatter={(v,n)=>[fR(v),n]}/>
+<Legend wrapperStyle={{fontSize:11,color:C.gl2}}/>
+<Area type="monotone" dataKey="omzet" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.25} name="Omzet"/>
+<Area type="monotone" dataKey="hpp" stroke="#F59E0B" fill="#F59E0B" fillOpacity={0.2} name="HPP/Modal DO"/>
+</AreaChart></ResponsiveContainer></Card>
+
+{/* Grafik 2: Margin vs Pengeluaran */}
+<Card style={{marginTop:10}}><div style={{fontWeight:700,color:C.gl2,marginBottom:8,fontSize:12}}>💹 2. Margin Kotor vs Pengeluaran Operasional per Hari</div>
+<ResponsiveContainer width="100%" height={200}><BarChart data={chartData} margin={{top:4,right:10,bottom:0,left:10}}>
+<CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/>
+<XAxis dataKey="tgl" stroke={C.gl2} fontSize={9}/>
+<YAxis stroke={C.gl2} fontSize={9} tickFormatter={v=>(v/1e6).toFixed(1)+"jt"}/>
+<Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht,fontSize:11}} formatter={(v,n)=>[fR(v),n]}/>
+<Legend wrapperStyle={{fontSize:11,color:C.gl2}}/>
+<Bar dataKey="marginKotor" fill="#3B82F6" name="Margin Kotor" opacity={0.85}/>
+<Bar dataKey="pengeluaran" fill="#EF4444" name="Pengeluaran Ops" opacity={0.85}/>
+</BarChart></ResponsiveContainer></Card>
+
+{/* Grafik 3: Laba Bersih per hari */}
+<Card style={{marginTop:10}}><div style={{fontWeight:700,color:C.gl2,marginBottom:8,fontSize:12}}>🏆 3. Laba Bersih per Hari (bar hijau=untung, merah=rugi)</div>
+<ResponsiveContainer width="100%" height={180}><BarChart data={chartData} margin={{top:4,right:10,bottom:0,left:10}}>
+<CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/>
+<XAxis dataKey="tgl" stroke={C.gl2} fontSize={9}/>
+<YAxis stroke={C.gl2} fontSize={9} tickFormatter={v=>(v/1e6).toFixed(1)+"jt"}/>
+<Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht,fontSize:11}} formatter={(v,n)=>[fR(v),n]}/>
+{chartData.map((entry,index)=><Cell key={index} fill={entry.labaBersih>=0?"#22C55E":"#EF4444"}/>)}
+<Bar dataKey="labaBersih" name="Laba Bersih">{chartData.map((entry,index)=><Cell key={index} fill={entry.labaBersih>=0?"#22C55E":"#EF4444"}/>)}</Bar>
+</BarChart></ResponsiveContainer></Card>
+
+{/* Grafik 4: Cash Flow Kumulatif — PALING PENTING */}
+<Card style={{marginTop:10,border:"2px solid "+C.glt}}><div style={{fontWeight:700,color:C.glt,marginBottom:8,fontSize:12}}>💰 4. Cash Flow Kumulatif Bulanan (PALING PENTING)</div>
+<div style={{fontSize:11,color:C.gl2,marginBottom:8}}>Akumulasi laba bersih dari hari 1 sampai akhir bulan — naik = bisnis sehat</div>
+<ResponsiveContainer width="100%" height={220}><AreaChart data={chartData} margin={{top:4,right:10,bottom:0,left:10}}>
+<CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/>
+<XAxis dataKey="tgl" stroke={C.gl2} fontSize={9}/>
+<YAxis stroke={C.gl2} fontSize={9} tickFormatter={v=>(v/1e6).toFixed(1)+"jt"}/>
+<Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht,fontSize:11}} formatter={(v,n)=>[fR(v),n]}/>
+<defs><linearGradient id="cfGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#22C55E" stopOpacity={0.4}/><stop offset="95%" stopColor="#22C55E" stopOpacity={0}/></linearGradient></defs>
+<Area type="monotone" dataKey="cashFlow" stroke="#22C55E" fill="url(#cfGrad)" strokeWidth={2} name="Cash Flow Kumulatif"/>
+<ReferenceLine y={0} stroke={C.rlt} strokeDasharray="4 4"/>
+</AreaChart></ResponsiveContainer></Card>
+
+{/* Grafik 5: Top 10 Konsumen */}
+{plgArr.length>0&&<Card style={{marginTop:10}}><div style={{fontWeight:700,color:C.gl2,marginBottom:8,fontSize:12}}>👥 5. Top 10 Pelanggan bulan ini</div>
+<ResponsiveContainer width="100%" height={220}><BarChart layout="vertical" data={plgArr.slice().sort((a,b)=>b.omzet-a.omzet).slice(0,10)} margin={{top:4,right:60,bottom:0,left:10}}>
+<CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/>
+<XAxis type="number" stroke={C.gl2} fontSize={9} tickFormatter={v=>(v/1e6).toFixed(1)+"jt"}/>
+<YAxis type="category" dataKey="nama" stroke={C.gl2} fontSize={9} width={100}/>
+<Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht,fontSize:11}} formatter={v=>fR(v)}/>
+<Bar dataKey="omzet" fill="#3B82F6" name="Omzet" radius={[0,4,4,0]}/>
+</BarChart></ResponsiveContainer></Card>}
+
+{/* Grafik 6: Per Sales */}
+{salesArr.length>0&&<Card style={{marginTop:10}}><div style={{fontWeight:700,color:C.gl2,marginBottom:8,fontSize:12}}>👤 6. Omzet per Sales</div>
+<ResponsiveContainer width="100%" height={Math.max(160,salesArr.length*45)}><BarChart layout="vertical" data={salesArr.slice().sort((a,b)=>b.omzet-a.omzet)} margin={{top:4,right:60,bottom:0,left:10}}>
+<CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/>
+<XAxis type="number" stroke={C.gl2} fontSize={9} tickFormatter={v=>(v/1e6).toFixed(1)+"jt"}/>
+<YAxis type="category" dataKey="nama" stroke={C.gl2} fontSize={9} width={100}/>
+<Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht,fontSize:11}} formatter={v=>fR(v)}/>
+<Bar dataKey="omzet" fill="#8B5CF6" name="Omzet" radius={[0,4,4,0]}/>
+<Bar dataKey="margin" fill="#22C55E" name="Margin" radius={[0,4,4,0]}/>
+</BarChart></ResponsiveContainer></Card>}
+
+</>}
+</div>}
+
 </div>;
 }
 
