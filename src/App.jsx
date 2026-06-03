@@ -167,7 +167,7 @@ function safeFileName(s){return(s||"file").replace(/[\/\\?%*:|"<>]/g,"_").replac
 function getModal(data,ukuran,jenis,tgl){tgl=tgl||toDay();var h=(data.modalHistory||[]).filter(x=>x.ukuran===ukuran&&x.jenis===jenis&&x.tanggal<=tgl);if(!h.length)return(DEF_MODAL[jenis]||{})[ukuran]||0;return h.slice().sort((a,b)=>b.tanggal.localeCompare(a.tanggal))[0].harga;}
 function getHET(data,ukuran,jenis){var hp=data.hetPrices;if(hp&&hp[jenis]&&hp[jenis][ukuran]!=null)return hp[jenis][ukuran];return(DEF_HET[jenis]||{})[ukuran]||0;}
 function calcMargin(items,data,tgl){return items.reduce((a,it)=>{var m=getModal(data,it.ukuran,it.jenis,tgl);return a+(Number(it.price||0)-m)*Number(it.qty||0);},0);}
-function getKonsumenTitipBal(titipList){var bal={};(titipList||[]).forEach(t=>{var k=t.konsumenNama;if(!bal[k])bal[k]={"5.5 kg":0,"12 kg":0,"50 kg":0,telp:t.konsumenTelp||"",alamat:t.konsumenAlamat||""};(t.items||[]).forEach(it=>{if(t.tipe==="titip")bal[k][it.ukuran]=(bal[k][it.ukuran]||0)+Number(it.qty||0);else bal[k][it.ukuran]=Math.max(0,(bal[k][it.ukuran]||0)-Number(it.qty||0));});});return bal;}
+function getKonsumenTitipBal(titipList){var bal={};(titipList||[]).forEach(t=>{var k=t.konsumenNama;if(!k)return;if(!bal[k])bal[k]={"5.5 kg":0,"12 kg":0,"50 kg":0,telp:t.konsumenTelp||"",alamat:t.konsumenAlamat||""};var items=t.items&&t.items.length>0?t.items:(t.ukuran&&t.qty?[{ukuran:t.ukuran,qty:t.qty}]:[]);var m=t.tipe==="titip"?1:t.tipe==="tarik"?-1:0;items.forEach(it=>{if(it.ukuran&&bal[k][it.ukuran]!==undefined)bal[k][it.ukuran]=m>0?(bal[k][it.ukuran]||0)+Number(it.qty||0):Math.max(0,(bal[k][it.ukuran]||0)-Number(it.qty||0));});});return bal;}
 function getTitipTotal(titipList,ukuran){var bal=getKonsumenTitipBal(titipList);return Object.values(bal).reduce((a,v)=>a+Math.max(0,v[ukuran]||0),0);}
 function getKosong(data,ukuran){return Math.max(0,((data.stokKosong||{})[ukuran]||0));}
 
@@ -1028,7 +1028,7 @@ return <div>
 <Inp label="Keterangan" value={f.ket} onChange={v=>setF(p=>({...p,ket:v}))}/>
 <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><Btn color="green" onClick={()=>save(false)} dis={!f.konsumenNama||!validItems.length}>💾 Simpan</Btn><Btn color="blue" onClick={()=>save(true)} dis={!f.konsumenNama||!validItems.length}>🖨️ Simpan & Cetak BA</Btn></div>
 </Card>
-<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>Riwayat Titip/Tarik</div><RTbl headers={["Tgl","Tipe","Konsumen","Sales","Detail","Aksi"]} rows={(data.titipList||[]).slice(0,40).map(t=>[fDs(t.tanggal),<Bdg color={t.tipe==="titip"?"green":"red"}>{t.tipe}</Bdg>,t.konsumenNama,t.salesNama||"-",(t.items||[]).map(i=>i.qty+"×"+i.ukuran).join(", "),<div style={{display:"flex",gap:4}}><button onClick={()=>setBa(t)} style={{background:C.inHv,border:"1px solid "+C.blt,borderRadius:6,padding:"4px 7px",color:C.blt,cursor:"pointer",fontSize:12}}>🖨️</button><ActBtns onDel={()=>setDelId(t)}/></div>])}/></Card>
+<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>Riwayat Titip/Tarik</div><RTbl headers={["Tgl","Tipe","Konsumen","Sales","Detail","Aksi"]} rows={(data.titipList||[]).slice(0,40).map(t=>[fDs(t.tanggal),<Bdg color={t.tipe==="titip"?"green":"red"}>{t.tipe}</Bdg>,t.konsumenNama,t.salesNama||"-",(t.items&&t.items.length>0?t.items:[{ukuran:t.ukuran,qty:t.qty}]).filter(i=>i.ukuran&&i.qty).map(i=>i.qty+"×"+i.ukuran).join(", "),<div style={{display:"flex",gap:4}}><button onClick={()=>setBa(t)} style={{background:C.inHv,border:"1px solid "+C.blt,borderRadius:6,padding:"4px 7px",color:C.blt,cursor:"pointer",fontSize:12}}>🖨️</button><ActBtns onDel={()=>setDelId(t)}/></div>])}/></Card>
 {delId&&<ConfirmDel msg="Hapus?" onCancel={()=>setDelId(null)} onConfirm={()=>{setData(d=>({...d,titipList:(d.titipList||[]).filter(x=>x.id!==delId.id)}));setDelId(null);}}/>}
 </div>;
 }
@@ -1182,11 +1182,11 @@ var rows=useMemo(()=>{
 return(data.bon||[]).filter(b=>{
 if(barFilter.from&&b.tanggal<barFilter.from)return false;
 if(barFilter.to&&b.tanggal>barFilter.to)return false;
-if(barFilter.salesId&&b.salesId!==barFilter.salesId)return false;
+if(barFilter.salesId&&b.salesId!==barFilter.salesId&&!(b.salesNama||b.sales||'').toLowerCase().includes((salesList.find(e=>e.id===barFilter.salesId)?.nama||'').toLowerCase()))return false;
 if(barFilter.konsumen&&!b.konsumen.toLowerCase().includes(barFilter.konsumen.toLowerCase()))return false;
 if(barFilter.status&&b.status!==barFilter.status)return false;
 return true;
-}).map(b=>{var emp=(data.employees||[]).find(e=>e.id===b.salesId);return{...b,salesNama:emp?.nama||"-",dl:dLeft(b.deadline)};});
+}).map(b=>{var emp=(data.employees||[]).find(e=>e.id===b.salesId);return{...b,salesNama:emp?.nama||b.salesNama||b.sales||"-",dl:dLeft(b.deadline)};});
 },[data.bon,data.employees,barFilter]);
 var cols=[
 {key:"tanggal",label:"Tgl",render:r=>fDs(r.tanggal),sortVal:r=>r.tanggal,filterable:true},
@@ -2187,6 +2187,12 @@ if(s){var d=JSON.parse(s);
 if(!d.totalAsset)d.totalAsset={"5.5 kg":0,"12 kg":0,"50 kg":0};
 if(!d.stokKosong)d.stokKosong={"5.5 kg":0,"12 kg":0,"50 kg":0};
 if(d.pelanggan)d.pelanggan=d.pelanggan.map(p=>({...p,hargaKhusus:Array.isArray(p.hargaKhusus)?p.hargaKhusus:[]}));
+// Migration titipan flat format → items array
+if(d.titipList)d.titipList=d.titipList.map(t=>{
+  if(t.items&&t.items.length>0)return t;
+  if(t.ukuran&&t.qty)return{...t,items:[{ukuran:t.ukuran,qty:Number(t.qty||0)}]};
+  return t;
+});
 // Migration DO lama → status diterima (stok sudah masuk)
 if(d.doList)d.doList=d.doList.map(x=>x.status?x:{...x,status:"diterima"});
 if(!d.titipList)d.titipList=[];
