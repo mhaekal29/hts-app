@@ -1028,7 +1028,43 @@ return <div>
 <Inp label="Keterangan" value={f.ket} onChange={v=>setF(p=>({...p,ket:v}))}/>
 <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><Btn color="green" onClick={()=>save(false)} dis={!f.konsumenNama||!validItems.length}>💾 Simpan</Btn><Btn color="blue" onClick={()=>save(true)} dis={!f.konsumenNama||!validItems.length}>🖨️ Simpan & Cetak BA</Btn></div>
 </Card>
-<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>Riwayat Titip/Tarik</div><RTbl headers={["Tgl","Tipe","Konsumen","Sales","Detail","Aksi"]} rows={(data.titipList||[]).slice(0,40).map(t=>[fDs(t.tanggal),<Bdg color={t.tipe==="titip"?"green":"red"}>{t.tipe}</Bdg>,t.konsumenNama,t.salesNama||"-",(t.items&&t.items.length>0?t.items:[{ukuran:t.ukuran,qty:t.qty}]).filter(i=>i.ukuran&&i.qty).map(i=>i.qty+"×"+i.ukuran).join(", "),<div style={{display:"flex",gap:4}}><button onClick={()=>setBa(t)} style={{background:C.inHv,border:"1px solid "+C.blt,borderRadius:6,padding:"4px 7px",color:C.blt,cursor:"pointer",fontSize:12}}>🖨️</button><ActBtns onDel={()=>setDelId(t)}/></div>])}/></Card>
+<Card>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+<div style={{fontWeight:700,color:C.gl2,fontSize:13}}>📋 Riwayat Titip/Tarik</div>
+</div>
+{(()=>{
+var[tf,setTf]=useState({from:"",to:"",tipe:"",ukuran:""});
+var titipFilt=(data.titipList||[]).filter(t=>{
+if(tf.from&&(t.tanggal||"")<tf.from)return false;
+if(tf.to&&(t.tanggal||"")>tf.to)return false;
+if(tf.tipe&&t.tipe!==tf.tipe)return false;
+if(tf.ukuran){var items=t.items&&t.items.length>0?t.items:[{ukuran:t.ukuran}];if(!items.some(i=>i.ukuran===tf.ukuran))return false;}
+return true;
+});
+return <>
+<div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10,background:C.nav,padding:8,borderRadius:8,border:"1px solid "+C.bdr}}>
+<Inp label="Dari" type="date" value={tf.from} onChange={v=>setTf(p=>({...p,from:v}))} style={{marginBottom:0,minWidth:130}}/>
+<Inp label="Sampai" type="date" value={tf.to} onChange={v=>setTf(p=>({...p,to:v}))} style={{marginBottom:0,minWidth:130}}/>
+<Sel label="Tipe" value={tf.tipe} onChange={v=>setTf(p=>({...p,tipe:v}))} opts={[{v:"",l:"Semua"},{v:"titip",l:"Titip"},{v:"tarik",l:"Tarik"}]}/>
+<Sel label="Ukuran" value={tf.ukuran} onChange={v=>setTf(p=>({...p,ukuran:v}))} opts={[{v:"",l:"Semua Ukuran"},{v:"5.5 kg",l:"5,5 kg"},{v:"12 kg",l:"12 kg"},{v:"50 kg",l:"50 kg"}]}/>
+{(tf.from||tf.to||tf.tipe||tf.ukuran)&&<Btn sm color="gray" onClick={()=>setTf({from:"",to:"",tipe:"",ukuran:""})}>✕ Reset</Btn>}
+</div>
+<RTbl headers={["Tgl","Tipe","Konsumen","Sales","Ukuran","Qty","Aksi"]} rows={titipFilt.slice(0,100).map(t=>{
+var items=t.items&&t.items.length>0?t.items:[{ukuran:t.ukuran,qty:t.qty}];
+var validItems=items.filter(i=>i.ukuran&&i.qty);
+var m=t.tipe==="titip"?1:-1;
+return[
+fDs(t.tanggal),
+<Bdg color={t.tipe==="titip"?"green":t.tipe==="tarik"?"red":"blue"}>{t.tipe}</Bdg>,
+<b style={{color:C.wht}}>{t.konsumenNama}</b>,
+t.salesPengantar||t.salesNama||"-",
+<div style={{display:"flex",flexDirection:"column",gap:2}}>{validItems.map((it,i)=><Bdg key={i} color={it.ukuran==="12 kg"?"blue":it.ukuran==="5.5 kg"?"green":"orange"}>{it.ukuran}</Bdg>)}</div>,
+<div style={{display:"flex",flexDirection:"column",gap:2}}>{validItems.map((it,i)=><b key={i} style={{color:m>0?C.glt:C.rlt}}>{m>0?"+":"-"}{it.qty}</b>)}</div>,
+<div style={{display:"flex",gap:4}}><button onClick={()=>setBa(t)} style={{background:C.inHv,border:"1px solid "+C.blt,borderRadius:6,padding:"4px 7px",color:C.blt,cursor:"pointer",fontSize:12}}>🖨️</button><ActBtns onDel={()=>setDelId(t)}/></div>
+];})}/>
+</>;
+})()}
+</Card>
 {delId&&<ConfirmDel msg="Hapus?" onCancel={()=>setDelId(null)} onConfirm={()=>{setData(d=>({...d,titipList:(d.titipList||[]).filter(x=>x.id!==delId.id)}));setDelId(null);}}/>}
 </div>;
 }
@@ -1221,7 +1257,7 @@ return <div>
 </div>
 <FilterTbl columns={cols} data={rows} empty="Belum ada bon" maxRows={150}/>
 </Card>
-{rows.filter(b=>openId===b.id).map(b=>{var paid=(b.pembayaran||[]).reduce((a,p)=>a+p.jumlah,0);return <Card key={b.id} style={{border:"1px solid "+C.blt}}>
+{openId&&(()=>{var b=(data.bon||[]).find(x=>x.id===openId);if(!b)return null;var paid=(b.pembayaran||[]).reduce((a,p)=>a+p.jumlah,0);return <Card style={{border:"1px solid "+C.blt}}>
 <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:8}}>
 <div><div style={{fontWeight:800,color:C.wht,fontSize:15}}>💳 Bayar: {b.konsumen}</div><div style={{fontSize:11,color:C.gl2}}>{fDs(b.tanggal)} · {b.noInv}</div></div>
 <Btn sm color="gray" onClick={()=>setOpenId(null)}>Batal</Btn>
@@ -1233,7 +1269,7 @@ return <div>
 </div>
 <div style={{display:"flex",gap:6,marginBottom:8}}>{["cash","transfer"].map(m=><button key={m} onClick={()=>setBF(p=>({...p,metode:m}))} style={{background:bF.metode===m?C.blu:C.nav,color:bF.metode===m?"white":C.wht,border:"1px solid "+(bF.metode===m?C.blt:C.bdr),borderRadius:6,padding:"7px 12px",fontWeight:700,fontSize:12,cursor:"pointer",flex:1}}>{m==="cash"?"💵 Cash":"🏦 Transfer"}</button>)}</div>
 <Btn color="green" onClick={()=>bayar(b)} dis={!bF.nominal}>💾 Catat Pembayaran</Btn>
-</Card>;})}
+</Card>;})()}
 {delId&&<ConfirmDel msg="Hapus bon?" onCancel={()=>setDelId(null)} onConfirm={()=>{setData(d=>({...d,bon:(d.bon||[]).filter(x=>x.id!==delId.id)}));setDelId(null);}}/>}
 </div>;
 }
