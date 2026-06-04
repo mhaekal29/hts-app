@@ -1708,9 +1708,10 @@ var totalPecah=DENOMS.reduce((a,d)=>a+Number(pecah[d]||0)*d,0);
 var cashTotal=(Number(cashLaci)||0)+(Number(rekBSI)||0)+(Number(rekBCA)||0);
 
 // DO Gantung = DO belum diklik Diterima/Sangkut
-var doGantung=(data.doList||[]).filter(d=>d.status==="gantung");
+// DO Gantung: hanya DO yang dibuat pada/sebelum tanggal tutup buku & belum diterima
+var doGantung=(data.doList||[]).filter(d=>d.status==="gantung"&&(d.tanggal||"")<=tgl);
 var nilaiDOGantung=doGantung.reduce((a,d)=>a+Number(d.totalHPP||0),0);
-var doSangkut=(data.doList||[]).filter(d=>d.status==="sangkut");
+var doSangkut=(data.doList||[]).filter(d=>d.status==="sangkut"&&(d.tanggal||"")<=tgl);
 var nilaiDOSangkut=doSangkut.reduce((a,d)=>a+Number(d.totalHPP||0),0);
 
 // Asset Tabung Milik PT
