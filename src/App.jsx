@@ -1255,14 +1255,17 @@ toast("✓ DO dibuat! Status: Gantung. Klik '✅ Diterima' setelah barang tiba d
 // Terima DO → stok masuk
 function terimaDO(d_rec){
 var qty=Number(d_rec.qty||0);var uk=d_rec.ukuran;
+// +isi: tabung berisi masuk gudang
 var ns={...(data.stock||{})};ns[uk]=(ns[uk]||0)+qty;
-var log={id:uid(),tanggal:d_rec.tanggal,ukuran:uk,jenis:"Isi Ulang SPPBE",qty,ket:"DO "+d_rec.trip+" - "+d_rec.sppbe+" (Diterima)",sumber:"DO",user:user?.nama||""};
+// -kosong: tabung kosong keluar ke SPPBE untuk direfill (total tabung tetap)
+var nk={...(data.stokKosong||{})};nk[uk]=Math.max(0,(nk[uk]||0)-qty);
+var log={id:uid(),tanggal:d_rec.tanggal,ukuran:uk,jenis:"Isi Ulang SPPBE",qty,ket:"DO "+d_rec.trip+" - "+d_rec.sppbe+" (+Isi, -Kosong)",sumber:"DO",user:user?.nama||""};
 setData(d=>({...d,
   doList:(d.doList||[]).map(x=>x.id===d_rec.id?{...x,status:"diterima",tglDiterima:toDay()}:x),
-  stock:ns,
+  stock:ns,stokKosong:nk,
   stockLog:[log,...(d.stockLog||[])].slice(0,500)
 }));
-toast("✅ DO diterima! Stok "+uk+" +"+qty+" tabung masuk gudang.");
+toast("✅ DO diterima! Stok "+uk+": Isi +"+qty+", Kosong -"+qty+" (total tabung tetap).");
 }
 
 // Tandai Sangkut
@@ -1275,13 +1278,14 @@ toast("⚠️ DO ditandai Sangkut.");
 function releaseDO(d_rec){
 var qty=Number(d_rec.qty||0);var uk=d_rec.ukuran;
 var ns={...(data.stock||{})};ns[uk]=(ns[uk]||0)+qty;
-var log={id:uid(),tanggal:toDay(),ukuran:uk,jenis:"Isi Ulang SPPBE",qty,ket:"DO "+d_rec.trip+" Release Sangkut",sumber:"DO",user:user?.nama||""};
+var nk={...(data.stokKosong||{})};nk[uk]=Math.max(0,(nk[uk]||0)-qty);
+var log={id:uid(),tanggal:toDay(),ukuran:uk,jenis:"Isi Ulang SPPBE",qty,ket:"DO "+d_rec.trip+" Release Sangkut (+Isi, -Kosong)",sumber:"DO",user:user?.nama||""};
 setData(d=>({...d,
   doList:(d.doList||[]).map(x=>x.id===d_rec.id?{...x,status:"diterima",tglDiterima:toDay()}:x),
-  stock:ns,
+  stock:ns,stokKosong:nk,
   stockLog:[log,...(d.stockLog||[])].slice(0,500)
 }));
-toast("✅ DO di-release! Stok "+uk+" +"+qty+" tabung masuk.");
+toast("✅ DO di-release! Stok "+uk+": Isi +"+qty+", Kosong -"+qty+".");
 }
 return <div>
 <div style={{marginBottom:12}}>
