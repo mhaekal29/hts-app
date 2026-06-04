@@ -1,6 +1,6 @@
 // === HOETRANGSA v4 — BAGIAN 1 DARI 3 ===
 import { useState, useEffect, useCallback, useRef, useMemo, createContext, useContext } from "react";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, ReferenceLine } from "recharts";
 import * as XLSX from "xlsx";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -11,7 +11,11 @@ var DENOMS=[100000,50000,20000,10000,5000,2000,1000];
 var ROLE_ORDER=["admin","akuntan","sales_driver","sales_freelance","checker","driver_truck","owner"];
 function sortEmp(emps){return(emps||[]).slice().sort((a,b)=>{var ia=ROLE_ORDER.indexOf(a.role);var ib=ROLE_ORDER.indexOf(b.role);if(ia!==ib)return ia-ib;return(a.nama||"").localeCompare(b.nama||"");});}
 // Load Plus Jakarta Sans font
-(function(){if(typeof document!=="undefined"&&!document.getElementById("pjs-font")){var l=document.createElement("link");l.id="pjs-font";l.rel="stylesheet";l.href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap";document.head.appendChild(l);}})();
+(function(){
+if(typeof document!=="undefined"){
+if(!document.getElementById("pjs-font")){var l=document.createElement("link");l.id="pjs-font";l.rel="stylesheet";l.href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap";document.head.appendChild(l);}
+if(!document.getElementById("h2c-script")){var s=document.createElement("script");s.id="h2c-script";s.src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";document.head.appendChild(s);}
+}})();
 var UANG_MAKAN_DEFAULT=15000;
 var SPBE_LOC={"SPPBE KCR":25000,"SPPBE MGL":115000};
 var KAT_K=["BBM","Gaji","Uang Makan Karyawan","Perbaikan","Administrasi","Sewa","Parkir","Service Kendaraan","Fee LPG 50kg","Uang Jalan SPBE","Uang Bongkar DO","Pancung 12kg","Pancung 5.5kg","Listrik PLN","Internet Wi-Fi","Air Galon","Lainnya"];
@@ -150,7 +154,7 @@ stockLog:[],doList:[],modalHistory:[],hetPrices:{},titipList:[],
 penjualan:[],bon:[],pengeluaran:[],employees:DEF_EMP.slice(),
 tutupBuku:[],pelanggan:[],setoranSales:[],setoranLog:[],absensi:[],ambilan:[],payrollLog:[],
 counters:{inv:{},sg:{},reg:0},theme:"light",
-company:{nama:"PT. HOE TRANG SA",alamat:"Jl. Jendral Sudirman No.80, Geuce Iniem, Kec. Banda Raya, Kota Banda Aceh",telepon:"0812 6900 2121",telepon2:"(0651) 21221",email:"npso.pthoetrangsa@gmail.com",website:"pt-hoetrangsa.business.site",npwp:"",slogan:"DEALER LPG PERTAMINA",bankNama:"BSI",bankAtasNama:"PT. HOE TRANG SA",bankRekening:"812 69 2121 8",logo:"",logoPertamina:"",ttdKasir:"",ttdDirektur:"",stempelLunas:"",direkturNama:"Muhammad Haekal",kasirNama:"MANARUL HIDAYAT",soldTo:"731070",shipToKCR:"862070",shipToMGL:"782092",saBulan:"Juni 2026",sa12KCR:"2845075",sa55KCR:"2845111",sa12MGL:"",sa55MGL:""}
+company:{nama:"PT. HOE TRANG SA",alamat:"Jl. Jendral Sudirman No.80, Geuce Iniem, Kec. Banda Raya, Kota Banda Aceh",telepon:"0812 6900 2121",telepon2:"(0651) 21221",email:"npso.pthoetrangsa@gmail.com",website:"pt-hoetrangsa.business.site",npwp:"",slogan:"DEALER LPG PERTAMINA",bankNama:"BSI",bankAtasNama:"PT. HOE TRANG SA",bankRekening:"812 69 2121 8",logo:"",logoPertamina:"",ttdKasir:"",ttdDirektur:"",stempelLunas:"",direkturNama:"Muhammad Haekal",kasirNama:"MANARUL HIDAYAT",soldTo:"731070",shipToKCR:"862070",shipToMGL:"782092",saBulan:"Juni 2026",sa12KCR:"2845075",sa55KCR:"2845111",sa12MGL:"",sa55MGL:"",assetArmada:0,hargaTbgKosong:{"5.5 kg":0,"12 kg":0,"50 kg":0}}
 };
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -167,9 +171,9 @@ function safeFileName(s){return(s||"file").replace(/[\/\\?%*:|"<>]/g,"_").replac
 function getModal(data,ukuran,jenis,tgl){tgl=tgl||toDay();var h=(data.modalHistory||[]).filter(x=>x.ukuran===ukuran&&x.jenis===jenis&&x.tanggal<=tgl);if(!h.length)return(DEF_MODAL[jenis]||{})[ukuran]||0;return h.slice().sort((a,b)=>b.tanggal.localeCompare(a.tanggal))[0].harga;}
 function getHET(data,ukuran,jenis){var hp=data.hetPrices;if(hp&&hp[jenis]&&hp[jenis][ukuran]!=null)return hp[jenis][ukuran];return(DEF_HET[jenis]||{})[ukuran]||0;}
 function calcMargin(items,data,tgl){return items.reduce((a,it)=>{var m=getModal(data,it.ukuran,it.jenis,tgl);return a+(Number(it.price||0)-m)*Number(it.qty||0);},0);}
-function getKonsumenTitipBal(titipList){var bal={};(titipList||[]).forEach(t=>{var k=t.konsumenNama;if(!bal[k])bal[k]={"5.5 kg":0,"12 kg":0,"50 kg":0,telp:t.konsumenTelp||"",alamat:t.konsumenAlamat||""};(t.items||[]).forEach(it=>{if(t.tipe==="titip")bal[k][it.ukuran]=(bal[k][it.ukuran]||0)+Number(it.qty||0);else bal[k][it.ukuran]=Math.max(0,(bal[k][it.ukuran]||0)-Number(it.qty||0));});});return bal;}
+function getKonsumenTitipBal(titipList){var bal={};(titipList||[]).forEach(t=>{var k=t.konsumenNama;if(!k)return;if(!bal[k])bal[k]={"5.5 kg":0,"12 kg":0,"50 kg":0,telp:t.konsumenTelp||"",alamat:t.konsumenAlamat||""};var items=t.items&&t.items.length>0?t.items:(t.ukuran&&t.qty?[{ukuran:t.ukuran,qty:t.qty}]:[]);var m=t.tipe==="titip"?1:t.tipe==="tarik"?-1:0;items.forEach(it=>{if(it.ukuran&&bal[k][it.ukuran]!==undefined)bal[k][it.ukuran]=m>0?(bal[k][it.ukuran]||0)+Number(it.qty||0):Math.max(0,(bal[k][it.ukuran]||0)-Number(it.qty||0));});});return bal;}
 function getTitipTotal(titipList,ukuran){var bal=getKonsumenTitipBal(titipList);return Object.values(bal).reduce((a,v)=>a+Math.max(0,v[ukuran]||0),0);}
-function getKosong(data,ukuran){if(!data)return 0;return Math.max(0,Number((data.stokKosong||{})[ukuran])||0);}
+function getKosong(data,ukuran){return Math.max(0,((data.stokKosong||{})[ukuran]||0));}
 
 function terbilang(n){
 if(n==null||isNaN(n))return"Nol";n=Math.floor(Math.abs(n));if(n===0)return"Nol";
@@ -205,7 +209,20 @@ function calcTotalPiutang(data){return(data.bon||[]).filter(b=>b.status!=="lunas
 // ─── PRINT HELPER (Simpan PDF via dialog browser) ─────────────────────────────
 // Tidak butuh CDN. User pilih "Save as PDF" di dialog print browser.
 
-function doPrint(id){
+// Buat nama file otomatis
+function makeFileName(type,label1,label2,ext){
+  var d=new Date();
+  var tgl=d.getDate().toString().padStart(2,"0")+"-"+["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Ags","Sep","Okt","Nov","Des"][d.getMonth()]+"-"+d.getFullYear();
+  var clean=function(s){return(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,"").slice(0,30);};
+  if(type==="inv")return clean(label1)+"_"+clean(label2)+"_"+tgl+"."+ext;
+  if(type==="slip")return clean(label1)+"_Slip-Gaji_"+clean(label2)+"."+ext;
+  if(type==="tb")return "Tutup-Buku_"+clean(label1)+"."+ext;
+  if(type==="do")return "Laporan-DO_"+clean(label1)+"."+ext;
+  return clean(label1)+"_"+tgl+"."+ext;
+}
+
+// Cetak PDF dengan saran nama file
+function doPrint(id,fileName){
 var e=document.getElementById("__pst");if(e)e.remove();
 var st=document.createElement("style");st.id="__pst";
 st.textContent=[
@@ -227,6 +244,45 @@ st.textContent=[
 document.head.appendChild(st);
 window.print();
 setTimeout(()=>{var e=document.getElementById("__pst");if(e)e.remove();},2000);
+}
+
+// Download PNG
+function doDownloadPNG(id,fileName,onDone){
+var el=document.getElementById(id);
+if(!el){alert("Element tidak ditemukan");return;}
+if(typeof html2canvas==="undefined"){alert("html2canvas belum dimuat, coba lagi sebentar");return;}
+html2canvas(el,{scale:2,useCORS:true,backgroundColor:"#ffffff",logging:false}).then(function(canvas){
+  var a=document.createElement("a");
+  a.href=canvas.toDataURL("image/png");
+  a.download=fileName||"dokumen.png";
+  a.click();
+  if(onDone)onDone();
+}).catch(function(e){alert("Gagal buat PNG: "+e.message);});
+}
+
+// Copy PNG ke clipboard
+function doCopyPNG(id,onDone){
+var el=document.getElementById(id);
+if(!el){alert("Element tidak ditemukan");return;}
+if(typeof html2canvas==="undefined"){alert("html2canvas belum dimuat, coba lagi sebentar");return;}
+html2canvas(el,{scale:2,useCORS:true,backgroundColor:"#ffffff",logging:false}).then(function(canvas){
+  canvas.toBlob(function(blob){
+    if(!blob){alert("Gagal membuat gambar");return;}
+    try{
+      navigator.clipboard.write([new ClipboardItem({"image/png":blob})]).then(function(){
+        if(onDone)onDone("copy");
+        alert("✅ Gambar ter-copy! Sekarang paste ke WhatsApp atau chat.");
+      }).catch(function(){
+        // Fallback: download saja
+        var a=document.createElement("a");
+        a.href=canvas.toDataURL("image/png");
+        a.download="dokumen.png";
+        a.click();
+        alert("Copy tidak didukung browser ini, otomatis download.");
+      });
+    }catch(e){alert("Copy gagal: "+e.message);}
+  },"image/png");
+}).catch(function(e){alert("Gagal buat PNG: "+e.message);});
 }
 
 // ─── THEME ────────────────────────────────────────────────────────────────────
@@ -504,9 +560,17 @@ return <tr key={i} style={{background:i%2===0?WHITE:G100}}>
 
 </div>
 <div style={{maxWidth:700,margin:"12px auto",display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
-<button onClick={()=>doPrint("_inv")} style={{background:NAVY,color:WHITE,border:"none",padding:"10px 28px",borderRadius:7,fontSize:13,cursor:"pointer",fontWeight:700,fontFamily:FONT}}>🖨️ Cetak / Simpan PDF</button>
-<span style={{fontSize:11,color:"#888",alignSelf:"center",fontStyle:"italic"}}>Pilih "Save as PDF" di dialog print</span>
-<button onClick={onClose} style={{background:"#566573",color:WHITE,border:"none",padding:"10px 22px",borderRadius:7,fontSize:13,cursor:"pointer",fontWeight:700,fontFamily:FONT}}>✕ Tutup</button>
+<div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"center"}}>
+<div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center"}}>
+{(()=>{var fn=makeFileName("inv",inv.konsumen,inv.noInv,"");return <>
+<button onClick={()=>doPrint("_inv",fn+".pdf")} style={{background:NAVY,color:WHITE,border:"none",padding:"9px 20px",borderRadius:7,fontSize:13,cursor:"pointer",fontWeight:700,fontFamily:FONT}}>🖨️ Cetak / PDF</button>
+<button onClick={()=>doDownloadPNG("_inv",fn+".png")} style={{background:"#1D6A96",color:WHITE,border:"none",padding:"9px 16px",borderRadius:7,fontSize:13,cursor:"pointer",fontWeight:700,fontFamily:FONT}}>💾 Download PNG</button>
+<button onClick={()=>doCopyPNG("_inv")} style={{background:"#145A32",color:WHITE,border:"none",padding:"9px 16px",borderRadius:7,fontSize:13,cursor:"pointer",fontWeight:700,fontFamily:FONT}}>📋 Copy PNG</button>
+<button onClick={onClose} style={{background:"#566573",color:WHITE,border:"none",padding:"9px 16px",borderRadius:7,fontSize:13,cursor:"pointer",fontWeight:700,fontFamily:FONT}}>✕ Tutup</button>
+</>;})()}
+</div>
+<div style={{fontSize:10,color:"#888",fontStyle:"italic"}}>💡 Nama file PDF: <b style={{color:"#aaa"}}>{makeFileName("inv",inv.konsumen,inv.noInv,"pdf")}</b></div>
+</div>
 </div>
 </div>;
 }
@@ -642,9 +706,17 @@ return <div id="_slip_wrap" style={{position:"fixed",inset:0,background:"#cdd3db
 </div>
 </div>
 <div style={{maxWidth:680,margin:"12px auto",display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
-<button onClick={()=>doPrint("_slip")} style={{background:SNAVY,color:SWHITE,border:"none",padding:"10px 28px",borderRadius:7,fontSize:13,cursor:"pointer",fontWeight:700,fontFamily:SFONT}}>🖨️ Cetak / Simpan PDF</button>
-<span style={{fontSize:11,color:"#888",alignSelf:"center",fontStyle:"italic"}}>Pilih "Save as PDF" di dialog print</span>
-<button onClick={onClose} style={{background:"#566573",color:SWHITE,border:"none",padding:"10px 22px",borderRadius:7,fontSize:13,cursor:"pointer",fontWeight:700,fontFamily:SFONT}}>✕ Tutup</button>
+<div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"center"}}>
+<div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center"}}>
+{(()=>{var fn=makeFileName("slip",slip.nama,"Gaji-"+(slip.bulan||""),"");return <>
+<button onClick={()=>doPrint("_slip",fn+".pdf")} style={{background:SNAVY,color:SWHITE,border:"none",padding:"9px 18px",borderRadius:7,fontSize:13,cursor:"pointer",fontWeight:700,fontFamily:SFONT}}>🖨️ Cetak / PDF</button>
+<button onClick={()=>doDownloadPNG("_slip",fn+".png")} style={{background:"#1D6A96",color:SWHITE,border:"none",padding:"9px 14px",borderRadius:7,fontSize:13,cursor:"pointer",fontWeight:700,fontFamily:SFONT}}>💾 Download PNG</button>
+<button onClick={()=>doCopyPNG("_slip")} style={{background:"#145A32",color:SWHITE,border:"none",padding:"9px 14px",borderRadius:7,fontSize:13,cursor:"pointer",fontWeight:700,fontFamily:SFONT}}>📋 Copy PNG</button>
+<button onClick={onClose} style={{background:"#566573",color:SWHITE,border:"none",padding:"9px 14px",borderRadius:7,fontSize:13,cursor:"pointer",fontWeight:700,fontFamily:SFONT}}>✕ Tutup</button>
+</>;})()}
+</div>
+<div style={{fontSize:10,color:"#888",fontStyle:"italic"}}>💡 Nama file PDF: <b style={{color:"#aaa"}}>{makeFileName("slip",slip.nama,"Gaji-"+(slip.bulan||""),"pdf")}</b></div>
+</div>
 </div>
 </div>;
 }
@@ -739,8 +811,12 @@ return <div>
 <SC label="Bon Aktif" value={bonAktif.length+" bon"} icon="📃" color={C.gl2}/>
 </div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:12,marginBottom:14}}>
-{SIZES.map(s=>{var isi=(data.stock||{})[s]||0;var titip=getTitipTotal(data.titipList,s);var kosong=getKosong(data,s);var totalS=isi+kosong+titip;return <Card key={s} style={{marginBottom:0}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}><div style={{fontWeight:700,color:C.gl2,fontSize:12}}>📦 LPG {s}</div><div style={{fontSize:14,fontWeight:900,color:C.olt}}>{totalS} tab</div></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4}}>{[["Tbg+Isi",isi,C.glt],["Titip",titip,C.blt],["Kosong",kosong,C.gl2]].map(x=><div key={x[0]} style={{background:C.nav,borderRadius:6,padding:"5px 4px",textAlign:"center",border:"1px solid "+C.bdr}}><div style={{fontSize:8,color:C.gl2}}>{x[0]}</div><div style={{fontSize:15,fontWeight:900,color:x[2]}}>{x[1]}</div></div>)}</div></Card>;})}
+{SIZES.map(s=>{var isi=(data.stock||{})[s]||0;var titip=getTitipTotal(data.titipList,s);var kosong=getKosong(data,s);var totalS=isi+kosong+titip;return <Card key={s} style={{marginBottom:0}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}><div style={{fontWeight:700,color:C.gl2,fontSize:12}}>📦 LPG {s}</div><div style={{fontSize:13,fontWeight:900,color:C.olt}}>{totalS} tab</div></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4}}>{[["Tbg+Isi",isi,C.glt],["Titip",titip,C.blt],["Kosong",kosong,C.gl2]].map(x=><div key={x[0]} style={{background:C.nav,borderRadius:6,padding:"5px 4px",textAlign:"center",border:"1px solid "+C.bdr}}><div style={{fontSize:8,color:C.gl2}}>{x[0]}</div><div style={{fontSize:15,fontWeight:900,color:x[2]}}>{x[1]}</div></div>)}</div></Card>;})}
 </div>
+<Card style={{marginBottom:14}}>
+<div style={{fontWeight:700,color:C.gl2,marginBottom:8,fontSize:13}}>📊 Mutasi Stok Hari Ini — {fDs(td)}</div>
+<TabelStokHarian data={data} tgl={td}/>
+</Card>
 <Card><div style={{fontWeight:700,color:C.gl2,fontSize:12,marginBottom:10}}>⚡ Akses Cepat</div><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{[["penjualan","🧾","Penjualan"],["stok","📦","Stok"],["piutang","💳","Piutang"],["absensi","📅","Absensi"],["payroll","💼","Payroll"],["laporan","📊","Laporan"]].map(x=><Btn key={x[0]} onClick={()=>setTab(x[0])} sm>{x[1]} {x[2]}</Btn>)}</div></Card>
 </div>;
 }
@@ -757,19 +833,34 @@ var salesEmp=sortEmp((data.employees||[]).filter(e=>e.aktif&&PENJUALAN_ROLES.inc
 var valid=f.items.filter(it=>Number(it.qty)>0&&Number(it.price)>0);
 var total=iTotal(valid);var margin=calcMargin(valid,data,f.tanggal);
 var kNames=[...new Set([...(data.pelanggan||[]).map(p=>p.nama),...(data.penjualan||[]).map(e=>e.konsumen)].filter(Boolean))];
-function onKons(nama){var p=(data.pelanggan||[]).find(x=>x.nama===nama);if(p){setF(pv=>{var newItems=pv.items.map(it=>{var h=(p.hargaKhusus||[]).find(x=>x.ukuran===it.ukuran&&x.jenis===it.jenis);if(h)return{...it,price:String(h.harga)};var het=getHET(data,it.ukuran,it.jenis);return{...it,price:het?String(het):it.price};});return{...pv,konsumen:nama,konsumenId:p.id,items:newItems};});}else setF(pv=>({...pv,konsumen:nama,konsumenId:""}));}
+function onKons(nama){var p=(data.pelanggan||[]).find(x=>x.nama===nama);if(p){setF(pv=>{var newItems=pv.items.map(it=>{var h=(Array.isArray(p.hargaKhusus)?p.hargaKhusus:[]).find(x=>x.ukuran===it.ukuran&&x.jenis===it.jenis);if(h)return{...it,price:String(h.harga)};var het=getHET(data,it.ukuran,it.jenis);return{...it,price:het?String(het):it.price};});return{...pv,konsumen:nama,konsumenId:p.id,items:newItems};});}else setF(pv=>({...pv,konsumen:nama,konsumenId:""}));}
 function setProduct(i,ukuran,jenis){setF(p=>{var it=p.items.slice();var newIt={...it[i],ukuran,jenis};var plg=(data.pelanggan||[]).find(x=>x.id===p.konsumenId);if(plg){var h=(plg.hargaKhusus||[]).find(x=>x.ukuran===ukuran&&x.jenis===jenis);if(h){newIt.price=String(h.harga);}else newIt.price=String(getHET(data,ukuran,jenis)||"");}else newIt.price=String(getHET(data,ukuran,jenis)||"");it[i]=newIt;return{...p,items:it};});}
 function setItem(i,k,v){setF(p=>{var it=p.items.slice();it[i]={...it[i],[k]:v};return{...p,items:it};});}
 function makeInvObj(entry){var emp=(data.employees||[]).find(e=>e.id===entry.salesId);var plg=(data.pelanggan||[]).find(x=>x.id===entry.konsumenId);return{noInv:entry.noInv,tanggal:entry.tanggal,konsumen:entry.konsumen,kota:plg?.alamat?.split(",").pop()?.trim()||"Banda Aceh",salesNama:emp?.nama||"",items:(entry.items||[]).map(it=>({ukuran:it.ukuran,jenis:it.jenis,qty:Number(it.qty),price:Number(it.price)})),total:entry.total,metodeBayar:entry.bayar==="bon"?"BON":entry.bayar==="transfer"?"Transfer "+(entry.bank||""):"Cash",isBon:entry.bayar==="bon",catatan:entry.ket||""};}
 function doSave(withPrint){
 if(!valid.length||!f.konsumen)return;
-var ns={...data.stock};valid.forEach(it=>{ns[it.ukuran]=Math.max(0,(ns[it.ukuran]||0)-Number(it.qty));});
+var ns={...data.stock};
+var nk={...(data.stokKosong||{})};
+var na={...(data.totalTabung||{})};
+var stokLogs=[];
+valid.forEach(it=>{
+  var q=Number(it.qty||0);var uk=it.ukuran;
+  ns[uk]=Math.max(0,(ns[uk]||0)-q);
+  if(it.jenis==="Tabung+Isi"){
+    nk[uk]=Math.max(0,(nk[uk]||0)-q);
+    na[uk]=Math.max(0,(na[uk]||0)-q);// totalTabung berkurang karena tabung terjual
+    stokLogs.push({id:uid(),tanggal:f.tanggal,ukuran:uk,jenis:"Tbg+Isi Keluar",qty:q,ket:"Inv - "+f.konsumen,sumber:"Penjualan"});
+  } else {
+    nk[uk]=(nk[uk]||0)+q;
+    stokLogs.push({id:uid(),tanggal:f.tanggal,ukuran:uk,jenis:"Isi Keluar",qty:q,ket:"Inv - "+f.konsumen,sumber:"Penjualan"});
+  }
+});
 var invInfo=nextInvNo(data,f.tanggal);
 var newCounters={...(data.counters||{inv:{},sg:{},reg:0})};if(!newCounters.inv)newCounters.inv={};newCounters.inv[invInfo.key]=invInfo.n;
 var entry={id:uid(),noInv:invInfo.no,tanggal:f.tanggal,waktu:new Date().toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"}),salesId:f.salesId,konsumen:f.konsumen,konsumenId:f.konsumenId,items:valid.map(it=>({...it,qty:Number(it.qty),price:Number(it.price)})),total,margin,bayar:f.bayar,bank:f.bank,deadline:f.deadline,ket:f.ket};
 var nb=(data.bon||[]).slice();
 if(f.bayar==="bon")nb.unshift({id:uid(),noInv:invInfo.no,tanggal:f.tanggal,konsumen:f.konsumen,konsumenId:f.konsumenId,salesId:f.salesId,items:valid,total,sisaTagihan:total,deadline:f.deadline,status:"belum",pembayaran:[],ket:f.ket,bank:f.bank});
-setData(d=>({...d,penjualan:[entry,...(d.penjualan||[])],stock:ns,bon:nb,counters:newCounters}));
+setData(d=>({...d,penjualan:[entry,...(d.penjualan||[])],stock:ns,stokKosong:nk,totalTabung:na,bon:nb,counters:newCounters,stockLog:[...stokLogs,...(d.stockLog||[])].slice(0,500)}));
 if(withPrint)setInv(makeInvObj(entry));
 setF(p=>({...p,konsumen:"",konsumenId:"",items:[{...blk}],ket:"",deadline:""}));
 toast("✓ Tersimpan! No: "+invInfo.no);
@@ -804,7 +895,7 @@ return <div>
 <Sel label="Penjual" value={f.salesId} onChange={v=>setF(p=>({...p,salesId:v}))} opts={[{v:"",l:"-- Pilih --"},...salesEmp.map(e=>({v:e.id,l:e.nama+" ("+e.posisi+")"}))]} style={{gridColumn:mob?"1/-1":"auto"}}/>
 <div style={{gridColumn:mob?"1/-1":"auto"}}><AutoInp label="Nama Konsumen" value={f.konsumen} onChange={v=>setF(p=>({...p,konsumen:v}))} options={kNames} placeholder="Ketik nama..." onSelect={onKons}/></div>
 </div>
-{f.konsumenId&&(()=>{var plg=(data.pelanggan||[]).find(x=>x.id===f.konsumenId);return plg&&(plg.hargaKhusus||[]).length>0?<div style={{padding:"6px 10px",background:C.mode==="dark"?"#0A1A2A":"#DBEAFE",borderRadius:6,fontSize:11,color:C.blt,marginBottom:10}}>💲 Pelanggan memiliki <b>{plg.hargaKhusus.length}</b> harga khusus — otomatis terpasang</div>:null;})()}
+{f.konsumenId&&(()=>{var plg=(data.pelanggan||[]).find(x=>x.id===f.konsumenId);return plg&&(Array.isArray(plg.hargaKhusus)?plg.hargaKhusus:[]).length>0?<div style={{padding:"6px 10px",background:C.mode==="dark"?"#0A1A2A":"#DBEAFE",borderRadius:6,fontSize:11,color:C.blt,marginBottom:10}}>💲 Pelanggan memiliki <b>{plg.hargaKhusus.length}</b> harga khusus — otomatis terpasang</div>:null;})()}
 <div style={{border:"1px solid "+C.bdr,borderRadius:8,overflow:"hidden",marginBottom:10}}>
 <div style={{display:"grid",gridTemplateColumns:mob?"85px 100px 55px 95px 28px":"95px 110px 60px 110px 90px 28px",background:C.nav,padding:"6px 10px",fontSize:11,color:C.gl2,fontWeight:700,gap:5}}><span>Ukuran</span><span>Jenis</span><span>Qty</span><span>Harga</span>{!mob&&<span>Subtotal</span>}<span/></div>
 {f.items.map((it,i)=><div key={i} style={{display:"grid",gridTemplateColumns:mob?"85px 100px 55px 95px 28px":"95px 110px 60px 110px 90px 28px",padding:"5px 10px",borderTop:"1px solid "+C.bdr,alignItems:"center",gap:5}}>
@@ -857,22 +948,130 @@ function RekapTab(){
 var[initMode,setInitMode]=useState(false);var[asF,setAsF]=useState({"5.5 kg":"","12 kg":"","50 kg":""});
 return <div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:12,marginBottom:14}}>
-{SIZES.map(s=>{var isi=(data.stock||{})[s]||0;var kosong=getKosong(data,s);var titip=getTitipTotal(data.titipList,s);var totalS=isi+kosong+titip;var titipLuarS=Math.max(0,(data.titipList||[]).reduce((a,t)=>{var m=t.tipe==="titip_luar"?1:t.tipe==="tarik_luar"?-1:0;if(!m)return a;var items=t.items&&t.items.length>0?t.items.filter(i=>i.ukuran===s):(t.ukuran===s?[{qty:t.qty}]:[]);return a+m*items.reduce((b,i)=>b+Number(i.qty||0),0);},0));var milikPT=Math.max(0,totalS-titipLuarS);return <Card key={s} style={{marginBottom:0}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}><div style={{fontWeight:800,color:C.wht,fontSize:14}}>📦 LPG {s}</div><div style={{textAlign:"right"}}><div style={{fontSize:9,color:C.gl2}}>Total Tabung</div><div style={{fontSize:18,fontWeight:900,color:C.olt}}>{totalS}</div></div></div>{totalS>0&&<div style={{height:6,borderRadius:3,background:C.bdr,display:"flex",overflow:"hidden",marginBottom:8}}><div style={{width:(isi/totalS*100)+"%",background:C.glt}}/><div style={{width:(titip/totalS*100)+"%",background:C.blt}}/><div style={{width:(kosong/totalS*100)+"%",background:C.gl2}}/></div>}<div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:5,marginBottom:6}}>{[["Tbg+Isi",isi,C.glt],["Titip",titip,C.blt],["Kosong",kosong,C.gl2]].map(x=><div key={x[0]} style={{background:C.nav,borderRadius:6,padding:"5px 4px",textAlign:"center",border:"1px solid "+C.bdr}}><div style={{fontSize:8,color:C.gl2}}>{x[0]}</div><div style={{fontSize:18,fontWeight:900,color:x[2]}}>{x[1]}</div></div>)}</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}><div style={{background:C.nav,borderRadius:6,padding:"5px 6px",textAlign:"center",border:"1px solid "+C.bdr}}><div style={{fontSize:8,color:"#6B7280"}}>Titipan Pihak Lain</div><div style={{fontSize:13,fontWeight:700,color:"#6B7280"}}>{titipLuarS}</div></div><div style={{background:C.nav,borderRadius:6,padding:"5px 6px",textAlign:"center",border:"2px solid "+C.olt}}><div style={{fontSize:8,color:C.olt,fontWeight:700}}>MILIK PT</div><div style={{fontSize:14,fontWeight:900,color:C.olt}}>{milikPT}</div></div></div></Card>;})}
+{SIZES.map(s=>{var isi=(data.stock||{})[s]||0;var asset=(data.totalTabung||{})[s]||0;var titip=getTitipTotal(data.titipList,s);var kosong=getKosong(data,s);var pI=asset>0?Math.round(isi/asset*100):0;var pT=asset>0?Math.round(titip/asset*100):0;var pK=asset>0?Math.round(kosong/asset*100):0;return <Card key={s} style={{marginBottom:0}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><div style={{fontWeight:800,color:C.wht,fontSize:15}}>📦 LPG {s}</div><div style={{textAlign:"right"}}><div style={{fontSize:10,color:C.gl2}}>Total Asset</div><div style={{fontSize:18,fontWeight:900,color:C.olt}}>{asset}</div></div></div><div style={{height:8,borderRadius:4,background:C.bdr,display:"flex",overflow:"hidden",marginBottom:10}}><div style={{width:pI+"%",background:C.glt}}/><div style={{width:pT+"%",background:C.blt}}/><div style={{width:pK+"%",background:C.gl2}}/></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>{[["🟢 Isi",isi,C.glt],["🔵 Titip",titip,C.blt],["⚫ Kosong",kosong,C.gl2]].map(x=><div key={x[0]} style={{background:C.nav,borderRadius:8,padding:"7px 6px",textAlign:"center",border:"1px solid "+C.bdr}}><div style={{fontSize:9,color:C.gl2}}>{x[0]}</div><div style={{fontSize:20,fontWeight:900,color:x[2]}}>{x[1]}</div></div>)}</div></Card>;})}
 </div>
-<Card><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><div style={{fontWeight:700,color:C.gl2,fontSize:13}}>🏭 Setup Stok Awal</div><Btn sm color={initMode?"gray":"blue"} onClick={()=>setInitMode(!initMode)}>{initMode?"Batal":"⚙️ Set"}</Btn></div>
-{initMode&&<div><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10}}>{SIZES.map(s=><Inp key={s} label={"Asset "+s+" ("+((data.totalTabung||{})[s]||0)+")"} type="number" value={asF[s]} placeholder={String((data.totalTabung||{})[s]||0)} onChange={v=>setAsF(p=>({...p,[s]:v}))}/>)}</div><Btn color="green" onClick={()=>{var na={...data.totalTabung};SIZES.forEach(s=>{if(asF[s]!=="")na[s]=Number(asF[s]);});setData(d=>({...d,totalTabung:na}));setInitMode(false);toast("✓ Asset diperbarui!");}}>💾 Simpan</Btn></div>}
+<Card><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><div style={{fontWeight:700,color:C.gl2,fontSize:13}}>🏭 Setup Total Asset</div><Btn sm color={initMode?"gray":"blue"} onClick={()=>setInitMode(!initMode)}>{initMode?"Batal":"⚙️ Set"}</Btn></div>
+{initMode&&<div><div style={{fontSize:11,color:C.gl2,marginBottom:8}}>Input stok fisik awal per ukuran:</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10}}>
+{SIZES.map(s=>[
+<Inp key={"isi_"+s} label={"Isi "+s} type="number" value={asF["isi_"+s]||""} placeholder={String((data.stock||{})[s]||0)} onChange={v=>setAsF(p=>({...p,["isi_"+s]:v}))}/>,
+<Inp key={"kos_"+s} label={"Kosong "+s} type="number" value={asF["kos_"+s]||""} placeholder={String(getKosong(data,s))} onChange={v=>setAsF(p=>({...p,["kos_"+s]:v}))}/>
+])}
+</div>
+<Btn color="green" onClick={()=>{
+var ns={...(data.stock||{})};var nk={...(data.stokKosong||{})};
+SIZES.forEach(s=>{
+if(asF["isi_"+s]!=="")ns[s]=Number(asF["isi_"+s]);
+if(asF["kos_"+s]!=="")nk[s]=Number(asF["kos_"+s]);
+});
+var na={};SIZES.forEach(s=>{na[s]=(nk[s]||0)+getTitipTotal(data.titipList,s);});
+setData(d=>({...d,stock:ns,stokKosong:nk,totalTabung:na}));
+setInitMode(false);toast("✓ Stok awal disimpan!");
+}}>💾 Simpan Stok Awal</Btn></div>}
 </Card>
 </div>;
 }
 function MutasiTab(){
-var[f,setF]=useState({ukuran:"12 kg",jenis:"masuk_isi",qty:"",ket:"",tanggal:toDay()});var[delId,setDelId]=useState(null);
-function save(){if(!f.qty||Number(f.qty)<=0)return;var qty=Number(f.qty);var s=f.ukuran;var ns={...data.stock};var na={...(data.totalTabung||{})};var jDesc="";if(f.jenis==="masuk_isi"){ns[s]=(ns[s]||0)+qty;jDesc="Isi Masuk";}else if(f.jenis==="masuk_tbg"){ns[s]=(ns[s]||0)+qty;na[s]=(na[s]||0)+qty;jDesc="Tabung+Isi Masuk";}else if(f.jenis==="keluar"){ns[s]=Math.max(0,(ns[s]||0)-qty);jDesc="Keluar";}else if(f.jenis==="isi_ulang"){ns[s]=(ns[s]||0)+qty;jDesc="Isi Ulang SPBE";}var log={id:uid(),tanggal:f.tanggal,ukuran:s,jenis:jDesc,qty,ket:f.ket,user:user?.nama||""};var logs=[log,...(data.stockLog||[])].slice(0,300);setData(d=>({...d,stock:ns,totalTabung:na,stockLog:logs}));setF(p=>({...p,qty:"",ket:""}));toast("✓ Stok diperbarui!");}
-return <div><Card><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(155px,1fr))",gap:10}}><Inp label="Tanggal" type="date" value={f.tanggal} onChange={v=>setF(p=>({...p,tanggal:v}))}/><Sel label="Ukuran" value={f.ukuran} onChange={v=>setF(p=>({...p,ukuran:v}))} opts={SIZES}/><Sel label="Jenis" value={f.jenis} onChange={v=>setF(p=>({...p,jenis:v}))} opts={[{v:"masuk_isi",l:"📦 Isi Masuk (DO)"},{v:"masuk_tbg",l:"🏭 Beli Tabung+Isi"},{v:"keluar",l:"📤 Isi Keluar"},{v:"isi_ulang",l:"🔄 Isi Ulang SPBE"}]}/><Inp label="Qty" type="number" value={f.qty} onChange={v=>setF(p=>({...p,qty:v}))}/><Inp label="Ket" value={f.ket} onChange={v=>setF(p=>({...p,ket:v}))}/></div><Btn color="green" onClick={save} dis={!f.qty}>💾 Simpan Mutasi</Btn></Card><Card><div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>Log Mutasi</div><RTbl headers={["Tgl","Ukuran","Jenis","Qty","Ket","Aksi"]} rows={(data.stockLog||[]).slice(0,50).map(l=>[fDs(l.tanggal),l.ukuran,l.jenis,l.qty,l.ket||"-",<ActBtns onDel={()=>setDelId(l)}/>])}/></Card>{delId&&<ConfirmDel msg="Hapus log?" onCancel={()=>setDelId(null)} onConfirm={()=>{setData(d=>({...d,stockLog:(d.stockLog||[]).filter(x=>x.id!==delId.id)}));setDelId(null);}}/>}</div>;
+var[f,setF]=useState({ukuran:"12 kg",jenis:"return_isi",qty:"",ket:"",tanggal:toDay()});var[delId,setDelId]=useState(null);
+function save(){
+if(!f.qty||Number(f.qty)<=0)return;
+var qty=Number(f.qty);var s=f.ukuran;
+var ns={...(data.stock||{})};var nk={...(data.stokKosong||{})};var na={...(data.totalTabung||{})};
+var jDesc="";
+if(f.jenis==="return_isi"){ns[s]=(ns[s]||0)+qty;jDesc="↩️ Return (+Isi)";}
+else if(f.jenis==="pancung"){ns[s]=(ns[s]||0)+qty;jDesc="✂️ Pancung (+Isi)";}
+else if(f.jenis==="beli_tbg"){nk[s]=(nk[s]||0)+qty;na[s]=(na[s]||0)+qty;jDesc="🛒 Beli Tabung (+Tbg)";}
+else if(f.jenis==="rusak"){ns[s]=Math.max(0,(ns[s]||0)-qty);jDesc="💥 Rusak/Bocor (-Isi)";}
+var log={id:uid(),tanggal:f.tanggal,ukuran:s,jenis:jDesc,qty,ket:f.ket,user:user?.nama||"",sumber:"Manual"};
+setData(d=>({...d,stock:ns,stokKosong:nk,totalTabung:na,stockLog:[log,...(d.stockLog||[])].slice(0,500)}));
+setF(p=>({...p,qty:"",ket:""}));
+toast("✓ Mutasi dicatat!");
+}
+return <div><Card><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(155px,1fr))",gap:10}}><Inp label="Tanggal" type="date" value={f.tanggal} onChange={v=>setF(p=>({...p,tanggal:v}))}/><Sel label="Ukuran" value={f.ukuran} onChange={v=>setF(p=>({...p,ukuran:v}))} opts={SIZES}/><Sel label="Jenis" value={f.jenis} onChange={v=>setF(p=>({...p,jenis:v}))} opts={[{v:"return_isi",l:"↩️ Return (+Isi)"},{v:"pancung",l:"✂️ Pancung (+Isi)"},{v:"beli_tbg",l:"🛒 Beli Tabung dr Konsumen (+Tbg)"},{v:"rusak",l:"💥 Rusak/Bocor (-Isi)"}]}/><Inp label="Qty" type="number" value={f.qty} onChange={v=>setF(p=>({...p,qty:v}))}/><Inp label="Ket" value={f.ket} onChange={v=>setF(p=>({...p,ket:v}))}/></div><Btn color="green" onClick={save} dis={!f.qty}>💾 Simpan Mutasi</Btn></Card><Card><div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>Log Mutasi</div><RTbl headers={["Tgl","Ukuran","Jenis","Qty","Ket","Aksi"]} rows={(data.stockLog||[]).slice(0,50).map(l=>[fDs(l.tanggal),l.ukuran,l.jenis,l.qty,l.ket||"-",<ActBtns onDel={()=>setDelId(l)}/>])}/></Card>{delId&&<ConfirmDel msg="Hapus log?" onCancel={()=>setDelId(null)} onConfirm={()=>{setData(d=>({...d,stockLog:(d.stockLog||[]).filter(x=>x.id!==delId.id)}));setDelId(null);}}/>}</div>;
+}
+function OpnameTab(){
+var C=useTheme();
+var[opDate,setOpDate]=useState(toDay());
+var[opF,setOpF]=useState(()=>{var o={};SIZES.forEach(s=>{o["isi_"+s]="";o["kos_"+s]="";});return o;});
+var[opResult,setOpResult]=useState(null);
+
+function hitungSelisih(){
+  var results=SIZES.map(s=>{
+    var sysIsi=(data.stock||{})[s]||0;
+    var sysKos=getKosong(data,s);
+    var fisIsi=opF["isi_"+s]!==""?Number(opF["isi_"+s]):null;
+    var fisKos=opF["kos_"+s]!==""?Number(opF["kos_"+s]):null;
+    var selIsi=fisIsi!==null?fisIsi-sysIsi:null;
+    var selKos=fisKos!==null?fisKos-sysKos:null;
+    return{ukuran:s,sysIsi,sysKos,fisIsi,fisKos,selIsi,selKos};
+  });
+  setOpResult({tanggal:opDate,results});
+}
+
+function doAdjust(s,type,sel){
+  var ns={...(data.stock||{})};var nk={...(data.stokKosong||{})};
+  var jDesc="";
+  if(type==="isi"){ns[s]=Math.max(0,(ns[s]||0)+sel);jDesc="Adj Opname Isi ("+fDs(opDate)+")";}
+  else{nk[s]=Math.max(0,(nk[s]||0)+sel);jDesc="Adj Opname Kosong ("+fDs(opDate)+")";}
+  var log={id:uid(),tanggal:opDate,ukuran:s,jenis:jDesc,qty:Math.abs(sel),ket:"Selisih Opname Checker",user:user?.nama||"",sumber:"Opname"};
+  setData(d=>({...d,stock:ns,stokKosong:nk,stockLog:[log,...(d.stockLog||[])].slice(0,500)}));
+  // Update hasil opname display
+  setOpResult(prev=>prev?{...prev,results:prev.results.map(r=>{
+    if(r.ukuran!==s)return r;
+    var newSysIsi=type==="isi"?Math.max(0,r.sysIsi+sel):r.sysIsi;
+    var newSysKos=type==="kos"?Math.max(0,r.sysKos+sel):r.sysKos;
+    return{...r,sysIsi:newSysIsi,sysKos:newSysKos,selIsi:r.fisIsi!==null?r.fisIsi-newSysIsi:null,selKos:r.fisKos!==null?r.fisKos-newSysKos:null};
+  })}:null);
+  toast("✓ Stok disesuaikan!");
+}
+
+return <div>
+<Card>
+<div style={{fontWeight:700,color:C.gl2,marginBottom:12,fontSize:13}}>🔍 Opname Harian — Input Stok Fisik</div>
+<Inp label="Tanggal Opname" type="date" value={opDate} onChange={setOpDate} style={{maxWidth:200,marginBottom:12}}/>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10,marginBottom:12}}>
+{SIZES.map(s=>[
+  <Inp key={"oi"+s} label={"Fisik Isi "+s+" (Sistem: "+(((data.stock||{})[s]||0))+")"} type="number" value={opF["isi_"+s]} onChange={v=>setOpF(p=>({...p,["isi_"+s]:v}))} placeholder="kosongkan jika tidak opname"/>,
+  <Inp key={"ok"+s} label={"Fisik Kosong "+s+" (Sistem: "+getKosong(data,s)+")"} type="number" value={opF["kos_"+s]} onChange={v=>setOpF(p=>({...p,["kos_"+s]:v}))} placeholder="kosongkan jika tidak opname"/>
+])}
+</div>
+<Btn color="blue" onClick={hitungSelisih}>🔍 Hitung Selisih</Btn>
+</Card>
+
+{opResult&&<Card style={{border:"1px solid #2980B9"}}>
+<div style={{fontWeight:700,color:C.blt,marginBottom:12,fontSize:13}}>📊 Hasil Opname — {fDs(opResult.tanggal)}</div>
+{opResult.results.map(r=>{
+  var adaSelisih=(r.selIsi!==null&&r.selIsi!==0)||(r.selKos!==null&&r.selKos!==0);
+  return <div key={r.ukuran} style={{marginBottom:10,padding:12,background:C.nav,borderRadius:8,border:"1px solid "+(adaSelisih?C.rlt:C.glt)}}>
+  <div style={{fontWeight:800,color:C.wht,marginBottom:8}}>📦 {r.ukuran}</div>
+  <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:adaSelisih?8:4}}>
+  {[["Isi Sistem",r.sysIsi,C.glt],["Isi Fisik",r.fisIsi!==null?r.fisIsi:"—",C.glt],["Kosong Sistem",r.sysKos,C.gl2],["Kosong Fisik",r.fisKos!==null?r.fisKos:"—",C.gl2]].map(x=><div key={x[0]} style={{background:C.bg,borderRadius:6,padding:"6px 8px",textAlign:"center"}}><div style={{fontSize:9,color:C.gl2}}>{x[0]}</div><div style={{fontSize:16,fontWeight:800,color:x[2]}}>{x[1]}</div></div>)}
+  </div>
+  {adaSelisih?<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+    {r.selIsi!==null&&r.selIsi!==0&&<div style={{flex:1,minWidth:160,padding:"8px 12px",background:C.rdk,borderRadius:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+    <span style={{color:"white",fontSize:12,fontWeight:700}}>💨 Isi: {r.selIsi>0?"+":""}{r.selIsi} tab</span>
+    <button onClick={()=>doAdjust(r.ukuran,"isi",r.selIsi)} style={{background:"white",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,color:"#DC2626",cursor:"pointer"}}>✓ Adjust</button>
+    </div>}
+    {r.selKos!==null&&r.selKos!==0&&<div style={{flex:1,minWidth:160,padding:"8px 12px",background:C.rdk,borderRadius:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+    <span style={{color:"white",fontSize:12,fontWeight:700}}>📦 Kosong: {r.selKos>0?"+":""}{r.selKos} tab</span>
+    <button onClick={()=>doAdjust(r.ukuran,"kos",r.selKos)} style={{background:"white",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,color:"#DC2626",cursor:"pointer"}}>✓ Adjust</button>
+    </div>}
+  </div>:<div style={{color:C.glt,fontSize:12,fontWeight:700}}>✅ Stok sesuai — tidak ada selisih</div>}
+  </div>;
+})}
+</Card>}
+
+<Card>
+<div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>📋 Log Opname</div>
+<RTbl headers={["Tgl","Ukuran","Keterangan","Qty","User"]} rows={(data.stockLog||[]).filter(l=>l.sumber==="Opname").slice(0,30).map(l=>[fDs(l.tanggal),l.ukuran,l.jenis,l.qty,l.user||"-"])}/>
+</Card>
+</div>;
 }
 function TitipTab(){
 var blkI={ukuran:"12 kg",qty:""};
 var[f,setF]=useState({tanggal:toDay(),tipe:"titip",konsumenNama:"",konsumenTelp:"",konsumenAlamat:"",salesId:"",items:[{...blkI}],ket:""});
 var[delId,setDelId]=useState(null);
+var[tf,setTf]=useState({from:"",to:"",tipe:"",ukuran:""});
 var kNames=[...new Set([...(data.pelanggan||[]).filter(p=>PLG_TITIP_KAT.includes(p.kategori)).map(p=>p.nama),...(data.titipList||[]).map(t=>t.konsumenNama)].filter(Boolean))];
 function onKons(nama){var p=(data.pelanggan||[]).find(x=>x.nama===nama);if(p)setF(pv=>({...pv,konsumenNama:nama,konsumenTelp:p.telepon||"",konsumenAlamat:p.alamat||""}));}
 function setItem(i,k,v){setF(p=>{var it=p.items.slice();it[i]={...it[i],[k]:v};return{...p,items:it};});}
@@ -882,7 +1081,7 @@ var balMap=getKonsumenTitipBal(data.titipList);var aktifK=Object.keys(balMap).fi
 return <div>
 <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:14}}><SC label="Konsumen Titip" value={aktifK.length} icon="🏪" color={C.blt}/>{SIZES.map(s=><SC key={s} label={"Titip "+s} value={getTitipTotal(data.titipList,s)+" tab"} icon="📦" color={C.blt}/>)}</div>
 <Card>
-<div style={{display:"flex",gap:6,marginBottom:12}}>{[["titip","📦 Titip",C.grn],["tarik","↩️ Tarik",C.rdk]].map(x=><button key={x[0]} onClick={()=>setF(p=>({...p,tipe:x[0]}))} style={{background:f.tipe===x[0]?x[2]:C.nav,color:f.tipe===x[0]?"white":C.wht,border:"1px solid "+(f.tipe===x[0]?x[2]:C.bdr),borderRadius:8,padding:"8px 16px",fontWeight:700,fontSize:13,cursor:"pointer",flex:1}}>{x[1]}</button>)}</div>
+<div style={{display:"flex",gap:6,marginBottom:12}}>{[["titip","📦 Titip ke Konsumen",C.grn],["tarik","↩️ Tarik dari Konsumen",C.rdk],["titip_luar","🏭 Titipan Pihak Lain Masuk",C.blt],["tarik_luar","📤 Titipan Pihak Lain Keluar","#6B7280"]].map(x=><button key={x[0]} onClick={()=>setF(p=>({...p,tipe:x[0]}))} style={{background:f.tipe===x[0]?x[2]:C.nav,color:f.tipe===x[0]?"white":C.wht,border:"1px solid "+(f.tipe===x[0]?x[2]:C.bdr),borderRadius:8,padding:"8px 16px",fontWeight:700,fontSize:13,cursor:"pointer",flex:1}}>{x[1]}</button>)}</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>
 <Inp label="Tanggal" type="date" value={f.tanggal} onChange={v=>setF(p=>({...p,tanggal:v}))}/>
 <Sel label="Sales" value={f.salesId} onChange={v=>setF(p=>({...p,salesId:v}))} opts={[{v:"",l:"-- Pilih --"},...(data.employees||[]).filter(e=>e.aktif).map(e=>({v:e.id,l:e.nama}))]}/>
@@ -902,15 +1101,51 @@ return <div>
 <Inp label="Keterangan" value={f.ket} onChange={v=>setF(p=>({...p,ket:v}))}/>
 <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><Btn color="green" onClick={()=>save(false)} dis={!f.konsumenNama||!validItems.length}>💾 Simpan</Btn><Btn color="blue" onClick={()=>save(true)} dis={!f.konsumenNama||!validItems.length}>🖨️ Simpan & Cetak BA</Btn></div>
 </Card>
-<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>Riwayat Titip/Tarik</div><RTbl headers={["Tgl","Tipe","Konsumen","Sales","Detail","Aksi"]} rows={(data.titipList||[]).slice(0,40).map(t=>[fDs(t.tanggal),<Bdg color={t.tipe==="titip"?"green":"red"}>{t.tipe}</Bdg>,t.konsumenNama,t.salesNama||"-",(t.items||[]).map(i=>i.qty+"×"+i.ukuran).join(", "),<div style={{display:"flex",gap:4}}><button onClick={()=>setBa(t)} style={{background:C.inHv,border:"1px solid "+C.blt,borderRadius:6,padding:"4px 7px",color:C.blt,cursor:"pointer",fontSize:12}}>🖨️</button><ActBtns onDel={()=>setDelId(t)}/></div>])}/></Card>
+<Card>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+<div style={{fontWeight:700,color:C.gl2,fontSize:13}}>📋 Riwayat Titip/Tarik</div>
+</div>
+{(()=>{
+var titipFilt=(data.titipList||[]).filter(t=>{
+if(tf.from&&(t.tanggal||"")<tf.from)return false;
+if(tf.to&&(t.tanggal||"")>tf.to)return false;
+if(tf.tipe&&t.tipe!==tf.tipe)return false;
+if(tf.ukuran){var items=t.items&&t.items.length>0?t.items:[{ukuran:t.ukuran}];if(!items.some(i=>i.ukuran===tf.ukuran))return false;}
+return true;
+});
+return <>
+<div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10,background:C.nav,padding:8,borderRadius:8,border:"1px solid "+C.bdr}}>
+<Inp label="Dari" type="date" value={tf.from} onChange={v=>setTf(p=>({...p,from:v}))} style={{marginBottom:0,minWidth:130}}/>
+<Inp label="Sampai" type="date" value={tf.to} onChange={v=>setTf(p=>({...p,to:v}))} style={{marginBottom:0,minWidth:130}}/>
+<Sel label="Tipe" value={tf.tipe} onChange={v=>setTf(p=>({...p,tipe:v}))} opts={[{v:"",l:"Semua"},{v:"titip",l:"Titip"},{v:"tarik",l:"Tarik"}]}/>
+<Sel label="Ukuran" value={tf.ukuran} onChange={v=>setTf(p=>({...p,ukuran:v}))} opts={[{v:"",l:"Semua Ukuran"},{v:"5.5 kg",l:"5,5 kg"},{v:"12 kg",l:"12 kg"},{v:"50 kg",l:"50 kg"}]}/>
+{(tf.from||tf.to||tf.tipe||tf.ukuran)&&<Btn sm color="gray" onClick={()=>setTf({from:"",to:"",tipe:"",ukuran:""})}>✕ Reset</Btn>}
+</div>
+<RTbl headers={["Tgl","Tipe","Konsumen","Sales","Ukuran","Qty","Aksi"]} rows={titipFilt.slice(0,100).map(t=>{
+var items=t.items&&t.items.length>0?t.items:[{ukuran:t.ukuran,qty:t.qty}];
+var validItems=items.filter(i=>i.ukuran&&i.qty);
+var m=t.tipe==="titip"?1:-1;
+return[
+fDs(t.tanggal),
+<Bdg color={t.tipe==="titip"?"green":t.tipe==="tarik"?"red":"blue"}>{t.tipe}</Bdg>,
+<b style={{color:C.wht}}>{t.konsumenNama}</b>,
+t.salesPengantar||t.salesNama||"-",
+<div style={{display:"flex",flexDirection:"column",gap:2}}>{validItems.map((it,i)=><Bdg key={i} color={it.ukuran==="12 kg"?"blue":it.ukuran==="5.5 kg"?"green":"orange"}>{it.ukuran}</Bdg>)}</div>,
+<div style={{display:"flex",flexDirection:"column",gap:2}}>{validItems.map((it,i)=><b key={i} style={{color:m>0?C.glt:C.rlt}}>{m>0?"+":"-"}{it.qty}</b>)}</div>,
+<div style={{display:"flex",gap:4}}><button onClick={()=>setBa(t)} style={{background:C.inHv,border:"1px solid "+C.blt,borderRadius:6,padding:"4px 7px",color:C.blt,cursor:"pointer",fontSize:12}}>🖨️</button><ActBtns onDel={()=>setDelId(t)}/></div>
+];})}/>
+</>;
+})()}
+</Card>
 {delId&&<ConfirmDel msg="Hapus?" onCancel={()=>setDelId(null)} onConfirm={()=>{setData(d=>({...d,titipList:(d.titipList||[]).filter(x=>x.id!==delId.id)}));setDelId(null);}}/>}
 </div>;
 }
 return <div>
 <STitle icon="📦" children="Stok & Mutasi"/>
-<div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>{[["rekap","📊 Rekap"],["mutasi","🔄 Mutasi"],["titip","🏪 Titip/Tarik"]].map(x=><button key={x[0]} onClick={()=>setTab(x[0])} style={{background:tab===x[0]?C.blu:C.nav,color:tab===x[0]?"white":C.wht,border:"1px solid "+(tab===x[0]?C.blt:C.bdr),borderRadius:8,padding:"7px 14px",fontWeight:700,fontSize:12,cursor:"pointer"}}>{x[1]}</button>)}</div>
+<div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>{[["rekap","📊 Rekap"],["mutasi","✏️ Mutasi Manual"],["opname","🔍 Opname"],["titip","🏪 Titip/Tarik"]].map(x=><button key={x[0]} onClick={()=>setTab(x[0])} style={{background:tab===x[0]?C.blu:C.nav,color:tab===x[0]?"white":C.wht,border:"1px solid "+(tab===x[0]?C.blt:C.bdr),borderRadius:8,padding:"7px 14px",fontWeight:700,fontSize:12,cursor:"pointer"}}>{x[1]}</button>)}</div>
 {tab==="rekap"&&<RekapTab/>}
 {tab==="mutasi"&&<MutasiTab/>}
+{tab==="opname"&&<OpnameTab/>}
 {tab==="titip"&&<TitipTab/>}
 {ba&&<BeritaAcaraView ba={ba} company={data.company} onClose={()=>setBa(null)}/>}
 </div>;
@@ -925,13 +1160,47 @@ function onUkuran(v){var hpp=getModal(data,v,"Isi",f.tanggal);setF(p=>({...p,uku
 function onTanggal(v){var hpp=getModal(data,f.ukuran,"Isi",v);setF(p=>({...p,tanggal:v,hppUnit:String(hpp||"")}));}
 var totalHPP=Number(f.qty||0)*Number(f.hppUnit||0);
 function save(){
-if(!f.qty||!f.noDO)return;
+if(!f.qty||!f.trip)return;
 var qty=Number(f.qty);var hpp=Number(f.hppUnit||0);
-var empDO=(data.employees||[]).find(e=>e.id===f.dibuatOleh);var doRec={id:uid(),tanggal:f.tanggal,trip:f.trip,noDO:f.trip,sppbe:f.sppbe,ukuran:f.ukuran,qty,hppUnit:hpp,totalHPP:qty*hpp,ket:f.ket,dibuatOleh:empDO?.nama||user?.nama||""};
-var newModalHistory=hpp>0?[{id:uid(),tanggal:f.tanggal,ukuran:f.ukuran,jenis:"Isi",harga:hpp,sumber:"DO "+f.noDO},...(data.modalHistory||[])]:(data.modalHistory||[]);
+var empDO=(data.employees||[]).find(e=>e.id===f.dibuatOleh);
+var doRec={id:uid(),tanggal:f.tanggal,trip:f.trip,noDO:f.trip,sppbe:f.sppbe,ukuran:f.ukuran,qty,hppUnit:hpp,totalHPP:qty*hpp,ket:f.ket,dibuatOleh:empDO?.nama||user?.nama||"",status:"gantung"};
+var newModalHistory=hpp>0?[{id:uid(),tanggal:f.tanggal,ukuran:f.ukuran,jenis:"Isi",harga:hpp,sumber:"DO "+f.trip},...(data.modalHistory||[])]:(data.modalHistory||[]);
+// Stok TIDAK langsung masuk — harus klik Diterima
 setData(d=>({...d,doList:[doRec,...(d.doList||[])],modalHistory:newModalHistory}));
-setF(p=>({...p,noDO:"",qty:"",ket:""}));
-toast("✓ DO dicatat! HPP "+fR(hpp)+"/unit jadi referensi.");
+setF(p=>({...p,qty:"",ket:""}));
+toast("✓ DO dibuat! Status: Gantung. Klik '✅ Diterima' setelah barang tiba di gudang.");
+}
+
+// Terima DO → stok masuk
+function terimaDO(d_rec){
+var qty=Number(d_rec.qty||0);var uk=d_rec.ukuran;
+var ns={...(data.stock||{})};ns[uk]=(ns[uk]||0)+qty;
+var log={id:uid(),tanggal:d_rec.tanggal,ukuran:uk,jenis:"Isi Ulang SPPBE",qty,ket:"DO "+d_rec.trip+" - "+d_rec.sppbe+" (Diterima)",sumber:"DO",user:user?.nama||""};
+setData(d=>({...d,
+  doList:(d.doList||[]).map(x=>x.id===d_rec.id?{...x,status:"diterima",tglDiterima:toDay()}:x),
+  stock:ns,
+  stockLog:[log,...(d.stockLog||[])].slice(0,500)
+}));
+toast("✅ DO diterima! Stok "+uk+" +"+qty+" tabung masuk gudang.");
+}
+
+// Tandai Sangkut
+function sangkutDO(d_rec){
+setData(d=>({...d,doList:(d.doList||[]).map(x=>x.id===d_rec.id?{...x,status:"sangkut"}:x)}));
+toast("⚠️ DO ditandai Sangkut.");
+}
+
+// Release Sangkut → stok masuk
+function releaseDO(d_rec){
+var qty=Number(d_rec.qty||0);var uk=d_rec.ukuran;
+var ns={...(data.stock||{})};ns[uk]=(ns[uk]||0)+qty;
+var log={id:uid(),tanggal:toDay(),ukuran:uk,jenis:"Isi Ulang SPPBE",qty,ket:"DO "+d_rec.trip+" Release Sangkut",sumber:"DO",user:user?.nama||""};
+setData(d=>({...d,
+  doList:(d.doList||[]).map(x=>x.id===d_rec.id?{...x,status:"diterima",tglDiterima:toDay()}:x),
+  stock:ns,
+  stockLog:[log,...(d.stockLog||[])].slice(0,500)
+}));
+toast("✅ DO di-release! Stok "+uk+" +"+qty+" tabung masuk.");
 }
 return <div>
 <div style={{marginBottom:12}}>
@@ -983,7 +1252,18 @@ return <div>
 </Card>
 <Card>
 <div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>Riwayat DO</div>
-<RTbl headers={["Tgl","Trip","SPPBE","Ukuran","Qty","HPP/Unit","Total HPP","Nama Driver","Aksi"]} rows={(data.doList||[]).slice(0,40).map(d=>[fDs(d.tanggal),<b style={{color:C.wht}}>{d.trip||d.noDO||"-"}</b>,d.sppbe,d.ukuran,<b style={{color:C.glt}}>{d.qty}</b>,fR(d.hppUnit||0),<b style={{color:C.olt}}>{fR(d.totalHPP||0)}</b>,d.dibuatOleh||"-",<ActBtns onDel={()=>setDelId(d)}/>])}/>
+<RTbl headers={["Tgl","Trip","SPPBE","Ukuran","Qty","HPP/Unit","Total HPP","Driver","Status","Aksi"]} rows={(data.doList||[]).slice(0,100).map(d=>{
+var st=d.status||"diterima";
+var stBadge=st==="gantung"?<Bdg color="orange">⏳ Gantung</Bdg>:st==="sangkut"?<Bdg color="red">⚠️ Sangkut</Bdg>:<Bdg color="green">✅ Diterima</Bdg>;
+var aksiBtn=st==="gantung"?<div style={{display:"flex",gap:3}}>
+<button onClick={()=>terimaDO(d)} style={{background:"#15803D",border:"none",borderRadius:5,padding:"3px 7px",color:"white",fontSize:10,fontWeight:700,cursor:"pointer"}}>✅ Terima</button>
+<button onClick={()=>sangkutDO(d)} style={{background:"#B45309",border:"none",borderRadius:5,padding:"3px 7px",color:"white",fontSize:10,fontWeight:700,cursor:"pointer"}}>⚠️ Sangkut</button>
+<ActBtns onDel={()=>setDelId(d)}/>
+</div>:st==="sangkut"?<div style={{display:"flex",gap:3}}>
+<button onClick={()=>releaseDO(d)} style={{background:"#1D4ED8",border:"none",borderRadius:5,padding:"3px 7px",color:"white",fontSize:10,fontWeight:700,cursor:"pointer"}}>🔓 Release</button>
+<ActBtns onDel={()=>setDelId(d)}/>
+</div>:<ActBtns onDel={()=>setDelId(d)}/>;
+return[fDs(d.tanggal),<b style={{color:C.wht}}>{d.trip||d.noDO||"-"}</b>,d.sppbe,<Bdg color={d.ukuran==="12 kg"?"blue":d.ukuran==="5.5 kg"?"green":"orange"}>{d.ukuran}</Bdg>,<b style={{color:C.glt}}>{d.qty}</b>,fR(d.hppUnit||0),<b style={{color:C.olt}}>{fR(d.totalHPP||0)}</b>,d.dibuatOleh||"-",stBadge,aksiBtn];})}/>
 </Card>
 {delId&&<ConfirmDel msg="Hapus DO?" onCancel={()=>setDelId(null)} onConfirm={()=>{setData(d=>({...d,doList:(d.doList||[]).filter(x=>x.id!==delId.id)}));setDelId(null);}}/>}
 </div>;
@@ -1010,11 +1290,11 @@ var rows=useMemo(()=>{
 return(data.bon||[]).filter(b=>{
 if(barFilter.from&&b.tanggal<barFilter.from)return false;
 if(barFilter.to&&b.tanggal>barFilter.to)return false;
-if(barFilter.salesId&&b.salesId!==barFilter.salesId)return false;
+if(barFilter.salesId&&b.salesId!==barFilter.salesId&&!(b.salesNama||b.sales||'').toLowerCase().includes((salesList.find(e=>e.id===barFilter.salesId)?.nama||'').toLowerCase()))return false;
 if(barFilter.konsumen&&!b.konsumen.toLowerCase().includes(barFilter.konsumen.toLowerCase()))return false;
 if(barFilter.status&&b.status!==barFilter.status)return false;
 return true;
-}).map(b=>{var emp=(data.employees||[]).find(e=>e.id===b.salesId);return{...b,salesNama:emp?.nama||"-",dl:dLeft(b.deadline)};});
+}).map(b=>{var emp=(data.employees||[]).find(e=>e.id===b.salesId);return{...b,salesNama:emp?.nama||b.salesNama||b.sales||"-",dl:dLeft(b.deadline)};});
 },[data.bon,data.employees,barFilter]);
 var cols=[
 {key:"tanggal",label:"Tgl",render:r=>fDs(r.tanggal),sortVal:r=>r.tanggal,filterable:true},
@@ -1049,7 +1329,7 @@ return <div>
 </div>
 <FilterTbl columns={cols} data={rows} empty="Belum ada bon" maxRows={150}/>
 </Card>
-{rows.filter(b=>openId===b.id).map(b=>{var paid=(b.pembayaran||[]).reduce((a,p)=>a+p.jumlah,0);return <Card key={b.id} style={{border:"1px solid "+C.blt}}>
+{openId&&(()=>{var b=(data.bon||[]).find(x=>x.id===openId);if(!b)return null;var paid=(b.pembayaran||[]).reduce((a,p)=>a+p.jumlah,0);return <Card style={{border:"1px solid "+C.blt}}>
 <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:8}}>
 <div><div style={{fontWeight:800,color:C.wht,fontSize:15}}>💳 Bayar: {b.konsumen}</div><div style={{fontSize:11,color:C.gl2}}>{fDs(b.tanggal)} · {b.noInv}</div></div>
 <Btn sm color="gray" onClick={()=>setOpenId(null)}>Batal</Btn>
@@ -1061,7 +1341,7 @@ return <div>
 </div>
 <div style={{display:"flex",gap:6,marginBottom:8}}>{["cash","transfer"].map(m=><button key={m} onClick={()=>setBF(p=>({...p,metode:m}))} style={{background:bF.metode===m?C.blu:C.nav,color:bF.metode===m?"white":C.wht,border:"1px solid "+(bF.metode===m?C.blt:C.bdr),borderRadius:6,padding:"7px 12px",fontWeight:700,fontSize:12,cursor:"pointer",flex:1}}>{m==="cash"?"💵 Cash":"🏦 Transfer"}</button>)}</div>
 <Btn color="green" onClick={()=>bayar(b)} dis={!bF.nominal}>💾 Catat Pembayaran</Btn>
-</Card>;})}
+</Card>;})()}
 {delId&&<ConfirmDel msg="Hapus bon?" onCancel={()=>setDelId(null)} onConfirm={()=>{setData(d=>({...d,bon:(d.bon||[]).filter(x=>x.id!==delId.id)}));setDelId(null);}}/>}
 </div>;
 }
@@ -1190,7 +1470,7 @@ var allKats=[...new Set([...PLG_KAT_27,"Lainnya",...(data.pelanggan||[]).map(p=>
 var filtered=(data.pelanggan||[]).filter(p=>{if(filterKat&&p.kategori!==filterKat)return false;if(search&&!((p.nama||"")+" "+(p.telepon||"")+" "+(p.regNo||"")).toLowerCase().includes(search.toLowerCase()))return false;return true;});
 function getKat(){return isCustom?(f.kategoriCustom||"Lainnya"):f.kategori;}
 function save(){if(!f.nama)return;if(edit){setData(d=>({...d,pelanggan:(d.pelanggan||[]).map(p=>p.id===edit.id?{...p,...f,kategori:getKat()}:p)}));setEdit(null);}else{var regInfo=nextRegNo(data);var newCounters={...(data.counters||{inv:{},sg:{},reg:0}),reg:regInfo.n};setData(d=>({...d,pelanggan:[{id:uid(),...f,kategori:getKat(),regNo:regInfo.no,hargaKhusus:[]},...(d.pelanggan||[])],counters:newCounters}));}setF({...blk});toast("✓ Pelanggan disimpan!");}
-function saveHarga(plg){if(!hf.harga)return;var newHK=[(plg.hargaKhusus||[]).filter(x=>!(x.ukuran===hf.ukuran&&x.jenis===hf.jenis)),{ukuran:hf.ukuran,jenis:hf.jenis,harga:Number(hf.harga)}].flat();setData(d=>({...d,pelanggan:(d.pelanggan||[]).map(p=>p.id!==plg.id?p:{...p,hargaKhusus:newHK})}));setHargaModal(prev=>prev?{...prev,hargaKhusus:newHK}:null);toast("✓ Harga khusus disimpan!");}
+function saveHarga(plg){if(!hf.harga)return;var baseHK=Array.isArray(plg.hargaKhusus)?plg.hargaKhusus:[];var newHK=[...baseHK.filter(x=>!(x.ukuran===hf.ukuran&&x.jenis===hf.jenis)),{ukuran:hf.ukuran,jenis:hf.jenis,harga:Number(hf.harga)}];setData(d=>({...d,pelanggan:(d.pelanggan||[]).map(p=>p.id!==plg.id?p:{...p,hargaKhusus:newHK})}));setHargaModal(prev=>prev?{...prev,hargaKhusus:newHK}:null);toast("✓ Harga khusus disimpan!");}
 function delHarga(plg,ukuran,jenis){var newHK=(plg.hargaKhusus||[]).filter(x=>!(x.ukuran===ukuran&&x.jenis===jenis));setData(d=>({...d,pelanggan:(d.pelanggan||[]).map(p=>p.id!==plg.id?p:{...p,hargaKhusus:newHK})}));setHargaModal(prev=>prev?{...prev,hargaKhusus:newHK}:null);}
 return <div>
 <STitle icon="👥" children="Kelola Pelanggan"/>
@@ -1211,7 +1491,7 @@ return <div>
 <Card>
 <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:10,marginBottom:10}}><Inp label="" value={search} onChange={setSearch} placeholder="🔍 Cari nama / HP / No.Reg..." style={{marginBottom:0}}/><Sel label="" value={filterKat} onChange={setFilterKat} opts={[{v:"",l:"Semua"},...allKats.map(k=>({v:k,l:k}))]} style={{marginBottom:0}}/></div>
 <div style={{fontSize:12,color:C.gl2,marginBottom:8}}>{filtered.length} pelanggan</div>
-<RTbl headers={["No.Reg","Nama","Kategori","Telepon","Harga Khusus","Aksi"]} rows={filtered.map(p=>{var hk=p.hargaKhusus||[];return[<button onClick={()=>setRegEdit(p)} style={{background:"none",border:"none",color:C.blt,fontSize:11,fontWeight:700,cursor:"pointer",padding:0}}>{p.regNo||"-"}</button>,<b style={{color:C.wht}}>{p.nama}</b>,<Bdg color={PLG_TITIP_KAT.includes(p.kategori)?"blue":"gray"}>{p.kategori||"-"}</Bdg>,p.telepon||"-",<button onClick={()=>{var cur=(data.pelanggan||[]).find(x=>x.id===p.id)||p;setHargaModal(cur);}} style={{background:hk.length>0?C.inHv:C.nav,border:"1px solid "+(hk.length>0?C.blt:C.bdr),borderRadius:5,padding:"3px 7px",color:hk.length>0?C.blt:C.gl2,cursor:"pointer",fontSize:11}}>{hk.length>0?hk.length+" harga":"+ Tambah"}</button>,<ActBtns onEdit={()=>{setEdit(p);setF({nama:p.nama,kategori:PLG_KAT_27.includes(p.kategori)?p.kategori:"Lainnya",kategoriCustom:PLG_KAT_27.includes(p.kategori)?"":p.kategori,telepon:p.telepon||"",alamat:p.alamat||""});}} onDel={()=>setDelId(p)}/>];})}/>
+<RTbl headers={["No.Reg","Nama","Kategori","Telepon","Harga Khusus","Aksi"]} rows={filtered.map(p=>{var hk=p.hargaKhusus||[];return[<button onClick={()=>setRegEdit(p)} style={{background:"none",border:"none",color:C.blt,fontSize:11,fontWeight:700,cursor:"pointer",padding:0}}>{p.regNo||"-"}</button>,<b style={{color:C.wht}}>{p.nama}</b>,<Bdg color={PLG_TITIP_KAT.includes(p.kategori)?"blue":"gray"}>{p.kategori||"-"}</Bdg>,p.telepon||"-",<button onClick={()=>{var cur=(data.pelanggan||[]).find(x=>x.id===p.id)||p;setHargaModal({...cur,hargaKhusus:Array.isArray(cur.hargaKhusus)?cur.hargaKhusus:[]});}} style={{background:hk.length>0?C.inHv:C.nav,border:"1px solid "+(hk.length>0?C.blt:C.bdr),borderRadius:5,padding:"3px 7px",color:hk.length>0?C.blt:C.gl2,cursor:"pointer",fontSize:11}}>{hk.length>0?hk.length+" harga":"+ Tambah"}</button>,<ActBtns onEdit={()=>{setEdit(p);setF({nama:p.nama,kategori:PLG_KAT_27.includes(p.kategori)?p.kategori:"Lainnya",kategoriCustom:PLG_KAT_27.includes(p.kategori)?"":p.kategori,telepon:p.telepon||"",alamat:p.alamat||""});}} onDel={()=>setDelId(p)}/>];})}/>
 </Card>
 {regEdit&&<Modal title={"Edit No. Registrasi — "+regEdit.nama} onClose={()=>setRegEdit(null)} onSave={()=>{setData(d=>({...d,pelanggan:(d.pelanggan||[]).map(p=>p.id===regEdit.id?{...p,regNo:regEdit.regNo}:p)}));setRegEdit(null);toast("✓ Diperbarui!");}}><Inp label="No. Registrasi" value={regEdit.regNo} onChange={v=>setRegEdit(p=>({...p,regNo:v}))} placeholder="HTS/CST/001"/></Modal>}
 {hargaModal&&<Modal title={"💲 Harga Khusus — "+hargaModal.nama} onClose={()=>setHargaModal(null)} width={500}>
@@ -1332,6 +1612,7 @@ var[salesId,setSalesId]=useState(isSales?user.id:"");
 var[tgl,setTgl]=useState(toDay());
 var[pecah,setPecah]=useState(()=>{var o={};DENOMS.forEach(d=>{o[d]="";});return o;});
 var[jadikanPinjaman,setJadikanPinjaman]=useState(false);
+var[viewTB,setViewTB]=useState(null);// untuk lihat detail tutup buku
 // Pengeluaran ops hanya catatan rekap, tidak jadi hutang
 var salesList=sortEmp((data.employees||[]).filter(e=>e.aktif));
 
@@ -1436,12 +1717,47 @@ return <div>
 }
 
 // ─── TUTUP BUKU v4 (harian + bulanan, PDF/PNG) ────────────────────────────────
+function TabelStokHarian({data,tgl}){
+var C=useTheme();
+var prevTB=(data.tutupBuku||[]).filter(r=>r.tanggal&&r.tanggal<tgl).sort((a,b)=>b.tanggal.localeCompare(a.tanggal))[0];
+var rows=SIZES.map(s=>{
+  var stokAwal=prevTB?.detail?.stokSnapshot?.[s]?.isi??((data.stock||{})[s]||0);
+  var doMasuk=(data.doList||[]).filter(d=>d.tanggal===tgl&&d.ukuran===s&&(d.status||"diterima")==="diterima").reduce((a,d)=>a+Number(d.qty||0),0);
+  var terjual=(data.penjualan||[]).filter(p=>p.tanggal===tgl).reduce((a,p)=>a+(p.items||[]).filter(it=>it.ukuran===s).reduce((b,it)=>b+Number(it.qty||0),0),0);
+  var sisaAkhir=(data.stock||{})[s]||0;
+  var totalHariIni=stokAwal+doMasuk;
+  return{s,stokAwal,doMasuk,totalHariIni,terjual,sisaAkhir};
+});
+return <div style={{overflowX:"auto"}}>
+<table style={{width:"100%",borderCollapse:"collapse",fontSize:12,fontFamily:"inherit"}}>
+<thead><tr style={{background:C.nav}}>
+<th style={{padding:"8px 12px",color:C.gl2,fontWeight:700,textAlign:"left",borderBottom:"2px solid "+C.bdr,fontSize:11}}>Keterangan</th>
+{SIZES.map(s=><th key={s} style={{padding:"8px 12px",color:C.wht,fontWeight:700,textAlign:"center",borderBottom:"2px solid "+C.bdr,fontSize:11}}>{s}</th>)}
+</tr></thead>
+<tbody>
+{[
+["Stok Awal",rows.map(r=>r.stokAwal),C.gl2,false],
+["DO Masuk (Diterima)",rows.map(r=>r.doMasuk),C.blt,false],
+["Total Stok Harian",rows.map(r=>r.totalHariIni),C.wht,true],
+["Penjualan",rows.map(r=>r.terjual),C.rlt,false],
+["SISA STOK AKHIR",rows.map(r=>r.sisaAkhir),C.glt,true],
+].map((row,i)=><tr key={i} style={{borderBottom:"1px solid "+C.bdr,background:row[3]?C.nav:"transparent"}}>
+<td style={{padding:"7px 12px",color:row[3]?C.wht:C.gl2,fontWeight:row[3]?700:400}}>{row[0]}</td>
+{row[1].map((v,j)=><td key={j} style={{padding:"7px 12px",textAlign:"center",fontWeight:row[3]?800:600,fontSize:row[3]?14:12,color:row[2]}}>{v}</td>)}
+</tr>)}
+</tbody>
+</table>
+</div>;
+}
 function TutupBukuMod({data,setData,toast}){
 var C=useTheme();var[tab,setTab]=useState("harian");
 var[tgl,setTgl]=useState(toDay());var[bln,setBln]=useState(toMonth());
 var[cashLaci,setCashLaci]=useState("");var[rekBSI,setRekBSI]=useState("");var[rekBCA,setRekBCA]=useState("");
 var[pecah,setPecah]=useState(()=>{var o={};DENOMS.forEach(d=>{o[d]="";});return o;});
 var[jadikanPinjaman,setJadikanPinjaman]=useState(false);
+var[viewTB,setViewTB]=useState(null);// modal lihat
+var[editTB,setEditTB]=useState(null);// record yang sedang diedit
+useEffect(()=>{if(editTB){setTgl(editTB.tanggal);setCashLaci(String(editTB.cashLaci||""));setRekBSI(String(editTB.rekBSI||""));setRekBCA(String(editTB.rekBCA||""));setPemasukanLain(String(editTB.pemasukanLain||""));}else{setTgl(toDay());setCashLaci("");setRekBSI("");setRekBCA("");}},[editTB]);
 
 // Harian P&L
 var pHari=(data.penjualan||[]).filter(e=>e.tanggal===tgl);
@@ -1455,16 +1771,53 @@ var cashInH=pHari.filter(e=>e.bayar==="cash").reduce((a,e)=>a+(e.total||0),0);
 var tfInH=pHari.filter(e=>e.bayar==="transfer").reduce((a,e)=>a+(e.total||0),0);
 var bonInH=pHari.filter(e=>e.bayar==="bon").reduce((a,e)=>a+(e.total||0),0);
 
-// Asset
+// Asset kalkulasi
 var piutangA=calcTotalPiutang(data);
 var nilaiStokA=calcNilaiStok(data);
 var pinjamanA=Math.max(0,calcPinjamanKaryawan(data));
 var kosong55=getKosong(data,"5.5 kg");var kosong12=getKosong(data,"12 kg");var kosong50=getKosong(data,"50 kg");
 var totalPecah=DENOMS.reduce((a,d)=>a+Number(pecah[d]||0)*d,0);
-var assetValue=(Number(cashLaci)||0)+(Number(rekBSI)||0)+(Number(rekBCA)||0)+piutangA+nilaiStokA+pinjamanA;
-// Prev tutup buku for comparison
+var cashTotal=(Number(cashLaci)||0)+(Number(rekBSI)||0)+(Number(rekBCA)||0);
+
+// DO Gantung = DO belum diklik Diterima/Sangkut
+// DO Gantung: hanya DO yang dibuat pada/sebelum tanggal tutup buku & belum diterima
+var doGantung=(data.doList||[]).filter(d=>d.status==="gantung"&&(d.tanggal||"")<=tgl);
+var nilaiDOGantung=doGantung.reduce((a,d)=>a+Number(d.totalHPP||0),0);
+var doSangkut=(data.doList||[]).filter(d=>d.status==="sangkut"&&(d.tanggal||"")<=tgl);
+var nilaiDOSangkut=doSangkut.reduce((a,d)=>a+Number(d.totalHPP||0),0);
+
+// Asset Tabung Milik PT
+var titipLuarBal={};
+(data.titipList||[]).forEach(t=>{if(t.tipe==="titip_luar"||t.tipe==="tarik_luar"){var m=t.tipe==="titip_luar"?1:-1;(t.items||[]).forEach(it=>{titipLuarBal[it.ukuran]=(titipLuarBal[it.ukuran]||0)+m*Number(it.qty||0);});}});
+
+var hargaTbg=data.company?.hargaTbgKosong||{};
+var assetTabungMilikPT=SIZES.reduce((a,s)=>{
+  var isiS=(data.stock||{})[s]||0;
+  var kosS=getKosong(data,s);
+  var titipS=getTitipTotal(data.titipList,s);
+  var totalS=isiS+kosS+titipS;
+  var titipLuar=Math.max(0,titipLuarBal[s]||0);
+  var milikPT=Math.max(0,totalS-titipLuar);
+  return a+milikPT*(hargaTbg[s]||0);
+},0);
+var assetArmada=Number(data.company?.assetArmada)||0;
+
+// PIUTANG & MODAL BERJALAN = Stok Isi + DO Gantung + BON Konsumen + Pinjaman Karyawan
+var piutangModal=nilaiStokA+nilaiDOGantung+piutangA+pinjamanA;
+
+// TOTAL CASH FLOW = Total Cash + Bank + Piutang & Modal Berjalan
+var cashFlowOmset=cashTotal+piutangModal;
+
+// Total Asset
+var assetValue=cashFlowOmset+assetTabungMilikPT+assetArmada;
+
+// Prev tutup buku
 var prevTB=(data.tutupBuku||[]).filter(r=>tab==="harian"?r.tanggal<tgl:r.bulan&&r.bulan<bln).sort((a,b)=>b.tanggal.localeCompare(a.tanggal))[0];
-var deltaAsset=prevTB?assetValue-(prevTB.assetValue||0):null;
+var cashFlowKemarin=prevTB?.cashFlowOmset||0;
+var deltaSelisih=cashFlowOmset-cashFlowKemarin-(labaBersihH||0);
+
+// Pemasukan lainnya
+var[pemasukanLain,setPemasukanLain]=useState("");
 
 // Bulanan aggregation
 var pBln=(data.penjualan||[]).filter(e=>(e.tanggal||"").startsWith(bln));
@@ -1474,7 +1827,10 @@ var penB=(data.pengeluaran||[]).filter(e=>(e.tanggal||"").startsWith(bln));
 var totalOutB=penB.reduce((a,e)=>a+Number(e.nominal||0),0);
 var labaBersihB=marginB-totalOutB;
 var dim=daysInMonth(bln);
-var chartDataB=[];for(var d=1;d<=dim;d++){var ds=bln+"-"+String(d).padStart(2,"0");var pp=pBln.filter(x=>x.tanggal===ds);var oz=pp.reduce((a,x)=>a+(x.total||0),0);var mg=pp.reduce((a,x)=>a+(x.margin||0),0);var pn=penB.filter(x=>x.tanggal===ds).reduce((a,x)=>a+Number(x.nominal||0),0);chartDataB.push({hari:String(d),omzet:oz,labaBersih:mg-pn});}
+var doBln=(data.doList||[]).filter(e=>(e.tanggal||"").startsWith(bln)&&(e.status||"diterima")==="diterima");
+var hppBln=doBln.reduce((a,e)=>a+Number(e.totalHPP||0),0);
+var cashFlowKumul=0;
+var chartDataB=[];for(var d=1;d<=dim;d++){var ds=bln+"-"+String(d).padStart(2,"0");var pp=pBln.filter(x=>x.tanggal===ds);var oz=pp.reduce((a,x)=>a+(x.total||0),0);var mg=pp.reduce((a,x)=>a+(x.margin||0),0);var pn=penB.filter(x=>x.tanggal===ds).reduce((a,x)=>a+Number(x.nominal||0),0);var hpp=doBln.filter(x=>x.tanggal===ds).reduce((a,x)=>a+Number(x.totalHPP||0),0);var labaBersih=mg-pn;cashFlowKumul+=labaBersih;chartDataB.push({hari:String(d),omzet:oz,hpp,marginKotor:mg,pengeluaran:pn,labaBersih,cashFlow:cashFlowKumul});}
 // Top 5 hari omzet
 var top5=chartDataB.slice().sort((a,b)=>b.omzet-a.omzet).slice(0,5);
 // Pengeluaran per kategori bulanan
@@ -1482,9 +1838,36 @@ var katPenMap={};penB.forEach(p=>{katPenMap[p.kategori]=(katPenMap[p.kategori]||
 var katPenArr=Object.entries(katPenMap).sort((a,b)=>b[1]-a[1]);
 
 function saveHarian(){
-var rec={id:uid(),tanggal:tgl,omzet:omzetH,hpp:hppH,labaKotor:marginH,totalOut:totalOutH,labaBersih:labaBersihH,cashIn:cashInH,tfIn:tfInH,bonIn:bonInH,cashLaci:Number(cashLaci)||0,rekBSI:Number(rekBSI)||0,rekBCA:Number(rekBCA)||0,totalPecah,piutangA,nilaiStokA,pinjamanA,assetValue};
-setData(d=>({...d,tutupBuku:[rec,...(d.tutupBuku||[])]}));
-toast("✓ Tutup buku harian tersimpan!");
+var penjualanDetail=(data.penjualan||[]).filter(e=>e.tanggal===tgl).map(e=>({noInv:e.noInv,konsumen:e.konsumen,total:e.total,bayar:e.bayar,items:e.items}));
+var pengeluaranDetail=(data.pengeluaran||[]).filter(e=>e.tanggal===tgl).map(e=>({kategori:e.kategori,nominal:e.nominal,ket:e.ket,karyawan:e.karyawanNama||""}));
+var doDetail=(data.doList||[]).filter(e=>e.tanggal===tgl).map(e=>({trip:e.trip,sppbe:e.sppbe,ukuran:e.ukuran,qty:e.qty,totalHPP:e.totalHPP,status:e.status}));
+var stokSnap={};SIZES.forEach(s=>{stokSnap[s]={isi:(data.stock||{})[s]||0,kosong:getKosong(data,s),titip:getTitipTotal(data.titipList,s)};});
+var katPenH={};penH.forEach(p=>{katPenH[p.kategori]=(katPenH[p.kategori]||0)+Number(p.nominal||0);});
+var rec={
+  id:editTB?editTB.id:uid(),
+  tanggal:tgl,
+  omzet:omzetH,hpp:hppH,labaKotor:marginH,totalOut:totalOutH,
+  pemasukanLain:Number(pemasukanLain)||0,
+  labaBersih:labaBersihH+(Number(pemasukanLain)||0),
+  cashIn:cashInH,tfIn:tfInH,bonIn:bonInH,
+  cashLaci:Number(cashLaci)||0,rekBSI:Number(rekBSI)||0,rekBCA:Number(rekBCA)||0,totalPecah,
+  piutangA,nilaiStokA,pinjamanA,
+  nilaiDOGantung,nilaiDOSangkut,
+  cashFlowOmset,assetTabungMilikPT,assetArmada,assetValue,
+  cashFlowKemarin,deltaSelisih,
+  lastEdited:editTB?new Date().toISOString():undefined,
+  detail:{penjualan:penjualanDetail,pengeluaran:pengeluaranDetail,doMasuk:doDetail,stokSnapshot:stokSnap,katPengeluaran:katPenH,jumlahTransaksi:penjualanDetail.length,jumlahDO:doDetail.length}
+};
+if(editTB){
+  // Replace record lama
+  setData(d=>({...d,tutupBuku:(d.tutupBuku||[]).map(x=>x.id===editTB.id?rec:x)}));
+  setEditTB(null);
+  toast("✓ Tutup buku diperbarui! Data hari berikutnya otomatis sinkron.");
+}else{
+  // Hapus record lama dengan tanggal yang sama (hanya 1 per tanggal)
+  setData(d=>({...d,tutupBuku:[rec,...(d.tutupBuku||[]).filter(x=>x.tanggal!==tgl)]}));
+  toast("✓ Tutup buku harian tersimpan!");
+}
 }
 function saveBulanan(){
 var rec={id:uid(),bulan:bln,tanggal:bln+"-28",omzet:omzetB,labaKotor:marginB,totalOut:totalOutB,labaBersih:labaBersihB,assetValue,piutangA,nilaiStokA,pinjamanA,cashLaci:Number(cashLaci)||0,rekBSI:Number(rekBSI)||0,rekBCA:Number(rekBCA)||0};
@@ -1516,31 +1899,118 @@ return <div>
 <div style={{display:"flex",gap:6,marginBottom:14}}>{[["harian","📅 Harian"],["bulanan","📆 Bulanan"]].map(x=><button key={x[0]} onClick={()=>setTab(x[0])} style={{background:tab===x[0]?C.blu:C.nav,color:tab===x[0]?"white":C.wht,border:"1px solid "+(tab===x[0]?C.blt:C.bdr),borderRadius:8,padding:"8px 18px",fontWeight:700,fontSize:13,cursor:"pointer"}}>{x[1]}</button>)}</div>
 
 {tab==="harian"&&<div id="_tb_hari">
-<Card><Inp label="Tanggal" type="date" value={tgl} onChange={setTgl} style={{maxWidth:220,marginBottom:0}}/></Card>
+<Card>
+<div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+<Inp label="Tanggal" type="date" value={tgl} onChange={setTgl} style={{maxWidth:220,marginBottom:0}}/>
+{editTB&&<div style={{background:"#78350F",border:"1px solid #F59E0B",borderRadius:8,padding:"8px 14px",fontSize:12,color:"#FCD34D"}}>
+✏️ Mode Edit — {fDs(editTB.tanggal)} · <button onClick={()=>setEditTB(null)} style={{background:"none",border:"none",color:"#FCD34D",cursor:"pointer",fontSize:12,textDecoration:"underline"}}>Batalkan</button>
+</div>}
+</div>
+{editTB&&<div style={{marginTop:8,padding:"8px 12px",background:"#7C2D12",borderRadius:6,fontSize:11,color:"#FCA5A5"}}>⚠️ Mengedit tutup buku akan mempengaruhi perhitungan hari berikutnya. Pastikan data sudah benar sebelum simpan.</div>}
+</Card>
+
+{/* CASH FLOW / OMSET */}
 <Card style={{border:"1px solid "+C.blt}}>
-<div style={{fontWeight:700,color:C.blt,marginBottom:12,fontSize:13}}>📊 P&L Hari Ini — {fDs(tgl)}</div>
-<div style={{border:"1px solid "+C.bdr,borderRadius:8,overflow:"hidden"}}>
-{[["Omzet",omzetH,C.wht,false],["HPP",hppH,C.gl2,false],["Laba Kotor",marginH,C.blt,true],["Total Pengeluaran",totalOutH,C.rlt,false],["LABA BERSIH",labaBersihH,labaBersihH>=0?C.glt:C.rlt,true]].map((x,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:x[3]?"10px 14px":"7px 14px",background:x[3]?C.nav:"transparent",borderBottom:"1px solid "+C.bdr}}><span style={{fontSize:x[3]?13:12,color:x[3]?C.wht:C.gl2,fontWeight:x[3]?700:400}}>{x[0]}</span><span style={{fontSize:x[3]?15:13,fontWeight:x[3]?900:600,color:x[2]}}>{fR(x[1])}</span></div>)}
+<div style={{fontWeight:700,color:C.blt,marginBottom:12,fontSize:13}}>💰 CASH FLOW / OMSET — {fDs(tgl)}</div>
+<div style={{border:"1px solid "+C.bdr,borderRadius:8,overflow:"hidden",marginBottom:10}}>
+{[
+["Cash di Laci",Number(cashLaci)||0,C.wht,false],
+["Bank BSI",Number(rekBSI)||0,"#9CA3AF",false],
+["Bank BCA",Number(rekBCA)||0,"#9CA3AF",false],
+["Total Cash + Bank",cashTotal,C.wht,true],
+["",null,null,false],
+["Stok Isi Gudang (HPP)",nilaiStokA,C.gl2,false],
+["DO Gantung",nilaiDOGantung,nilaiDOGantung>0?"#F59E0B":C.gl2,false],
+["BON Konsumen",piutangA,C.gl2,false],
+["Pinjaman Karyawan",pinjamanA,C.gl2,false],
+["PIUTANG & MODAL BERJALAN",piutangModal,C.wht,true],
+["",null,null,false],
+["TOTAL CASH FLOW",cashFlowOmset,cashFlowOmset>=0?C.glt:C.rlt,true],
+].map((x,i)=>x[1]===null&&x[0]===""?<div key={i} style={{height:8,background:"transparent"}}/> :<div key={i} style={{display:"flex",justifyContent:"space-between",padding:x[3]?"10px 14px":"7px 14px",background:x[3]?C.nav:"transparent",borderBottom:"1px solid "+C.bdr}}>
+<span style={{fontSize:x[3]?13:12,color:x[3]?C.wht:C.gl2,fontWeight:x[3]?700:400}}>{x[0]}</span>
+<span style={{fontSize:x[3]?15:13,fontWeight:x[3]?900:600,color:x[2]}}>{fR(x[1]||0)}</span>
+</div>)}
 </div>
-</Card>
-<Card>
-<div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>💰 Komposisi Pembayaran</div>
-<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
-{[["Cash",cashInH,C.glt],["Transfer",tfInH,C.blt],["BON",bonInH,C.olt]].map(x=><div key={x[0]} style={{background:C.nav,borderRadius:8,padding:"8px 10px",textAlign:"center",border:"1px solid "+C.bdr}}><div style={{fontSize:10,color:C.gl2}}>{x[0]}</div><div style={{fontSize:13,fontWeight:900,color:x[2]}}>{fR(x[1])}</div></div>)}
+{/* Pecah Kas Input */}
+<div style={{fontSize:11,fontWeight:700,color:C.gl2,marginBottom:6}}>📥 Input Cash Fisik:</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8,marginBottom:10}}>
+<Inp label="Cash di Laci (Rp)" type="number" value={cashLaci} onChange={setCashLaci}/>
+<Inp label="Saldo Bank BSI (Rp)" type="number" value={rekBSI} onChange={setRekBSI}/>
+<Inp label="Saldo Bank BCA (Rp)" type="number" value={rekBCA} onChange={setRekBCA}/>
 </div>
-</Card>
-<Card>
-<div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>💵 Pecahan Kas Fisik</div>
-<div style={{border:"1px solid "+C.bdr,borderRadius:8,overflow:"hidden"}}>
+{/* Pecah Uang */}
+<div style={{fontSize:11,fontWeight:700,color:C.gl2,marginBottom:6}}>🪙 Pecahan Kas Fisik (opsional):</div>
+<div style={{border:"1px solid "+C.bdr,borderRadius:8,overflow:"hidden",marginBottom:10}}>
 {DENOMS.map(d=><div key={d} style={{display:"grid",gridTemplateColumns:"1fr 85px 105px",padding:"5px 11px",borderTop:"1px solid "+C.bdr,alignItems:"center"}}><span style={{color:C.wht,fontSize:13,fontWeight:600}}>{fR(d)}</span><input type="number" value={pecah[d]} placeholder="0" onChange={e=>setPecah(u=>({...u,[d]:e.target.value}))} style={{background:C.nav,border:"1px solid "+C.bdr,borderRadius:6,padding:"4px 7px",color:C.wht,fontSize:12,outline:"none",width:74}}/><span style={{color:Number(pecah[d]||0)>0?C.olt:C.gl2,fontWeight:700,fontSize:12}}>{Number(pecah[d]||0)>0?fR(Number(pecah[d])*d):"-"}</span></div>)}
 <div style={{display:"grid",gridTemplateColumns:"1fr 85px 105px",padding:"9px 11px",background:C.nav,borderTop:"2px solid "+C.bdr}}><b style={{color:C.wht}}>Total Tunai</b><span/><b style={{color:C.glt}}>{fR(totalPecah)}</b></div>
 </div>
 </Card>
-<AssetSection/>
+
+{/* P&L HARI INI */}
+<Card style={{border:"1px solid "+C.glt}}>
+<div style={{fontWeight:700,color:C.glt,marginBottom:12,fontSize:13}}>📊 P&L Hari Ini</div>
+<div style={{border:"1px solid "+C.bdr,borderRadius:8,overflow:"hidden",marginBottom:10}}>
+{[["Omzet",omzetH,C.wht,false],["HPP / Modal",hppH,C.gl2,false],["Laba Kotor",marginH,C.blt,true],["Pengeluaran Operasional",-totalOutH,C.rlt,false],["Pemasukan Lainnya",Number(pemasukanLain)||0,C.olt,false],["LABA BERSIH",labaBersihH+(Number(pemasukanLain)||0),(labaBersihH+(Number(pemasukanLain)||0))>=0?C.glt:C.rlt,true]].map((x,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:x[3]?"10px 14px":"7px 14px",background:x[3]?C.nav:"transparent",borderBottom:"1px solid "+C.bdr}}><span style={{fontSize:x[3]?13:12,color:x[3]?C.wht:C.gl2,fontWeight:x[3]?700:400}}>{x[0]}</span><span style={{fontSize:x[3]?15:13,fontWeight:x[3]?900:600,color:x[2]}}>{fR(x[1])}</span></div>)}
+</div>
+<Inp label="Pemasukan Lainnya (topup saham dll)" type="number" value={pemasukanLain} onChange={setPemasukanLain} placeholder="0"/>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginTop:10}}>
+{[["Cash",cashInH,C.glt],["Transfer",tfInH,C.blt],["BON",bonInH,C.olt]].map(x=><div key={x[0]} style={{background:C.nav,borderRadius:8,padding:"8px 10px",textAlign:"center",border:"1px solid "+C.bdr}}><div style={{fontSize:10,color:C.gl2}}>{x[0]}</div><div style={{fontSize:13,fontWeight:900,color:x[2]}}>{fR(x[1])}</div></div>)}
+</div>
+</Card>
+
+{/* VERIFIKASI SELISIH */}
+<Card style={{border:"1px solid "+(Math.abs(deltaSelisih)<1000?C.glt:C.olt)}}>
+<div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>✅ Verifikasi Cash Flow</div>
+<div style={{border:"1px solid "+C.bdr,borderRadius:8,overflow:"hidden"}}>
+{[["Total Cash Flow Kemarin",cashFlowKemarin,C.gl2,false],["Laba Hari Ini",labaBersihH+(Number(pemasukanLain)||0),C.glt,false],["Total Cash Flow Hari Ini",cashFlowOmset,C.blt,true],["SELISIH",deltaSelisih,Math.abs(deltaSelisih)<1000?C.glt:C.rlt,true]].map((x,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:x[3]?"10px 14px":"7px 14px",background:x[3]?C.nav:"transparent",borderBottom:"1px solid "+C.bdr}}><span style={{fontSize:x[3]?13:12,color:x[3]?C.wht:C.gl2,fontWeight:x[3]?700:400}}>{x[0]}</span><span style={{fontSize:x[3]?15:13,fontWeight:x[3]?900:600,color:x[2]}}>{fR(x[1])}</span></div>)}
+</div>
+{Math.abs(deltaSelisih)<1000&&<div style={{marginTop:8,padding:"6px 12px",background:C.grn,borderRadius:6,fontSize:12,fontWeight:700,color:"white"}}>✅ Selisih = 0. Cash flow balance!</div>}
+{Math.abs(deltaSelisih)>=1000&&<div style={{marginTop:8,padding:"6px 12px",background:C.rdk,borderRadius:6,fontSize:12,color:"white"}}>⚠️ Ada selisih {fR(Math.abs(deltaSelisih))}. Periksa input cash atau ada transaksi yang terlewat.</div>}
+</Card>
+
+{/* TOTAL ASSET */}
+<Card style={{border:"1px solid "+C.olt}}>
+<div style={{fontWeight:700,color:C.olt,marginBottom:12,fontSize:13}}>🏦 TOTAL ASSET</div>
+<div style={{border:"1px solid "+C.bdr,borderRadius:8,overflow:"hidden",marginBottom:10}}>
+{[["Total Cash Flow",cashFlowOmset,C.blt,false],["Asset Tabung Milik PT",assetTabungMilikPT,C.gl2,false],["Asset Armada",assetArmada,C.gl2,false],["TOTAL ASSET",assetValue,C.olt,true]].map((x,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:x[3]?"12px 14px":"8px 14px",background:x[3]?C.nav:"transparent",borderBottom:"1px solid "+C.bdr}}><span style={{fontSize:x[3]?14:12,color:x[3]?C.wht:C.gl2,fontWeight:x[3]?800:400}}>{x[0]}</span><span style={{fontSize:x[3]?18:13,fontWeight:x[3]?900:600,color:x[2]}}>{fR(x[1])}</span></div>)}
+</div>
+</Card>
+
+{/* REKAP TABUNG */}
+<Card>
+<div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>📊 Mutasi Stok Hari Ini</div>
+<TabelStokHarian data={data} tgl={tgl}/>
+</Card>
+<Card>
+<div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>📦 Rekap Tabung</div>
+<div style={{overflowX:"auto"}}>
+<table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+<thead><tr style={{background:C.nav}}>
+{["Keterangan","12 kg","5,5 kg","50 kg"].map(h=><th key={h} style={{padding:"8px 10px",color:C.gl2,fontWeight:700,textAlign:h==="Keterangan"?"left":"center",borderBottom:"2px solid "+C.bdr}}>{h}</th>)}
+</tr></thead>
+<tbody>
+{[
+["Di Gudang (Isi)",(data.stock||{})["12 kg"]||0,(data.stock||{})["5.5 kg"]||0,(data.stock||{})["50 kg"]||0,C.glt],
+["Kosong di Gudang",kosong12,kosong55,kosong50,C.gl2],
+["Titip ke Konsumen",getTitipTotal(data.titipList,"12 kg"),getTitipTotal(data.titipList,"5.5 kg"),getTitipTotal(data.titipList,"50 kg"),C.blt],
+["Total Keseluruhan Tabung",((data.stock||{})["12 kg"]||0)+kosong12+getTitipTotal(data.titipList,"12 kg"),((data.stock||{})["5.5 kg"]||0)+kosong55+getTitipTotal(data.titipList,"5.5 kg"),((data.stock||{})["50 kg"]||0)+kosong50+getTitipTotal(data.titipList,"50 kg"),C.olt,true],
+["Titipan Pihak Lain di PT",Math.max(0,titipLuarBal["12 kg"]||0),Math.max(0,titipLuarBal["5.5 kg"]||0),Math.max(0,titipLuarBal["50 kg"]||0),"#6B7280"],
+["MILIK PT HOE TRANGSA",Math.max(0,((data.totalTabung||{})["12 kg"]||0)-(titipLuarBal["12 kg"]||0)),Math.max(0,((data.totalTabung||{})["5.5 kg"]||0)-(titipLuarBal["5.5 kg"]||0)),Math.max(0,((data.totalTabung||{})["50 kg"]||0)-(titipLuarBal["50 kg"]||0)),C.wht,true],
+].map((r,i)=><tr key={i} style={{borderBottom:"1px solid "+C.bdr,background:r[5]?C.nav:"transparent"}}>
+<td style={{padding:"7px 10px",color:r[5]?C.wht:C.gl2,fontWeight:r[5]?700:400}}>{r[0]}</td>
+{[r[1],r[2],r[3]].map((v,j)=><td key={j} style={{padding:"7px 10px",textAlign:"center",color:r[4],fontWeight:r[5]?800:600,fontSize:r[5]?14:12}}>{v}</td>)}
+</tr>)}
+</tbody>
+</table>
+</div>
+</Card>
+
 <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-<Btn color="green" onClick={saveHarian}>💾 Simpan</Btn>
-<button onClick={()=>doPrint("_tb_hari")} style={{background:C.blu,color:"#fff",border:"none",padding:"9px 16px",borderRadius:8,fontSize:13,cursor:"pointer",fontWeight:700}}>🖨️ Cetak</button>
-<span style={{fontSize:11,color:"#888",fontStyle:"italic",alignSelf:"center"}}>Pilih "Save as PDF" di dialog cetak</span>
+<Btn color={editTB?"orange":"green"} onClick={saveHarian}>{editTB?"💾 Simpan Perubahan":"💾 Simpan Tutup Buku"}</Btn>
+<button onClick={()=>doPrint("_tb_hari")} style={{background:C.blu,color:"#fff",border:"none",padding:"9px 16px",borderRadius:8,fontSize:13,cursor:"pointer",fontWeight:700}}>🖨️ Cetak / PDF</button>
+<button onClick={()=>doDownloadPNG("_tb_hari",makeFileName("tb",tgl,"","png"))} style={{background:"#1D6A96",color:"#fff",border:"none",padding:"9px 14px",borderRadius:8,fontSize:13,cursor:"pointer",fontWeight:700}}>💾 PNG</button>
+<button onClick={()=>doCopyPNG("_tb_hari")} style={{background:"#145A32",color:"#fff",border:"none",padding:"9px 14px",borderRadius:8,fontSize:13,cursor:"pointer",fontWeight:700}}>📋 Copy</button>
+<span style={{fontSize:10,color:"#888",fontStyle:"italic",alignSelf:"center"}}>💡 PDF: <b>{makeFileName("tb",tgl,"","pdf")}</b></span>
 </div>
 </div>}
 
@@ -1548,14 +2018,53 @@ return <div>
 <Card><MonthPicker label="Pilih Bulan" value={bln} onChange={setBln}/></Card>
 <Card style={{border:"1px solid "+C.blt}}>
 <div style={{fontWeight:700,color:C.blt,marginBottom:12,fontSize:13}}>📊 P&L Bulanan — {BULAN_ID[Number(bln.split("-")[1])-1]} {bln.split("-")[0]}</div>
-<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8,marginBottom:10}}>
-{[["Omzet",omzetB,C.wht],["Laba Kotor",marginB,C.blt],["Pengeluaran",totalOutB,C.rlt],["Laba Bersih",labaBersihB,labaBersihB>=0?C.glt:C.rlt]].map(x=><div key={x[0]} style={{background:C.nav,borderRadius:8,padding:"8px 10px",border:"1px solid "+C.bdr}}><div style={{fontSize:10,color:C.gl2}}>{x[0]}</div><div style={{fontSize:14,fontWeight:900,color:x[2]}}>{fR(x[1])}</div></div>)}
+{/* Summary cards */}
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8,marginBottom:14}}>
+{[["Total Omzet",omzetB,C.wht],["HPP/Modal (DO)",hppBln,C.olt],["Margin Kotor",marginB,C.blt],["Pengeluaran Ops",totalOutB,C.rlt],["Laba Bersih",labaBersihB,labaBersihB>=0?C.glt:C.rlt]].map(x=><div key={x[0]} style={{background:C.nav,borderRadius:8,padding:"8px 10px",border:"1px solid "+C.bdr}}><div style={{fontSize:10,color:C.gl2}}>{x[0]}</div><div style={{fontSize:13,fontWeight:900,color:x[2]}}>{fR(x[1])}</div></div>)}
 </div>
-{chartDataB.some(d=>d.omzet>0)&&<ResponsiveContainer width="100%" height={200}><AreaChart data={chartDataB}><CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/><XAxis dataKey="hari" stroke={C.gl2} fontSize={10}/><YAxis stroke={C.gl2} fontSize={10} tickFormatter={v=>"Rp "+(v/1e6).toFixed(1)+"jt"}/><Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht}} formatter={v=>fR(v)}/><Area type="monotone" dataKey="omzet" stroke={C.blt} fill={C.blt} fillOpacity={0.3} name="Omzet"/><Area type="monotone" dataKey="labaBersih" stroke={C.glt} fill={C.glt} fillOpacity={0.3} name="Laba Bersih"/></AreaChart></ResponsiveContainer>}
+{/* Grafik 1: Omzet & HPP per hari */}
+{chartDataB.some(d=>d.omzet>0)&&<>
+<div style={{fontSize:11,fontWeight:700,color:C.gl2,marginBottom:6}}>📈 Omzet & Modal HPP per Hari</div>
+<ResponsiveContainer width="100%" height={180}><AreaChart data={chartDataB} margin={{top:4,right:8,bottom:0,left:8}}>
+<CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/>
+<XAxis dataKey="hari" stroke={C.gl2} fontSize={9}/>
+<YAxis stroke={C.gl2} fontSize={9} tickFormatter={v=>(v/1e6).toFixed(1)+"jt"}/>
+<Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht,fontSize:11}} formatter={v=>fR(v)}/>
+<Area type="monotone" dataKey="omzet" stroke={C.blt} fill={C.blt} fillOpacity={0.25} name="Omzet"/>
+<Area type="monotone" dataKey="hpp" stroke={C.olt} fill={C.olt} fillOpacity={0.2} name="HPP/Modal"/>
+</AreaChart></ResponsiveContainer>
+{/* Grafik 2: Margin & Pengeluaran */}
+<div style={{fontSize:11,fontWeight:700,color:C.gl2,marginBottom:6,marginTop:14}}>📊 Margin Kotor & Pengeluaran per Hari</div>
+<ResponsiveContainer width="100%" height={160}><BarChart data={chartDataB} margin={{top:4,right:8,bottom:0,left:8}}>
+<CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/>
+<XAxis dataKey="hari" stroke={C.gl2} fontSize={9}/>
+<YAxis stroke={C.gl2} fontSize={9} tickFormatter={v=>(v/1e6).toFixed(1)+"jt"}/>
+<Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht,fontSize:11}} formatter={v=>fR(v)}/>
+<Bar dataKey="marginKotor" fill={C.blt} name="Margin Kotor" opacity={0.8}/>
+<Bar dataKey="pengeluaran" fill={C.rlt} name="Pengeluaran" opacity={0.8}/>
+</BarChart></ResponsiveContainer>
+{/* Grafik 3: Cash Flow Kumulatif */}
+<div style={{fontSize:11,fontWeight:700,color:C.gl2,marginBottom:6,marginTop:14}}>💰 Cash Flow Kumulatif (Laba Bersih per Hari)</div>
+<ResponsiveContainer width="100%" height={160}><AreaChart data={chartDataB} margin={{top:4,right:8,bottom:0,left:8}}>
+<CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/>
+<XAxis dataKey="hari" stroke={C.gl2} fontSize={9}/>
+<YAxis stroke={C.gl2} fontSize={9} tickFormatter={v=>(v/1e6).toFixed(1)+"jt"}/>
+<Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht,fontSize:11}} formatter={v=>fR(v)}/>
+<Area type="monotone" dataKey="cashFlow" stroke={C.glt} fill={C.glt} fillOpacity={0.3} name="Cash Flow Kumulatif"/>
+<Area type="monotone" dataKey="labaBersih" stroke="#F59E0B" fill="#F59E0B" fillOpacity={0.15} name="Laba Bersih Harian"/>
+</AreaChart></ResponsiveContainer>
+</>}
 </Card>
 {top5.some(x=>x.omzet>0)&&<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:8,fontSize:13}}>🏆 Top 5 Hari (Omzet)</div><RTbl headers={["Hari","Omzet","Laba Bersih"]} rows={top5.map(x=>[bln+"-"+x.hari,<b style={{color:C.blt}}>{fR(x.omzet)}</b>,<b style={{color:x.labaBersih>=0?C.glt:C.rlt}}>{fR(x.labaBersih)}</b>])}/></Card>}
 {katPenArr.length>0&&<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:8,fontSize:13}}>💸 Pengeluaran per Kategori</div><RTbl headers={["Kategori","Total","% dari Pengeluaran"]} rows={katPenArr.map(([k,v])=>[k,<b style={{color:C.rlt}}>{fR(v)}</b>,(totalOutB>0?(v/totalOutB*100).toFixed(1):0)+"%"])}/></Card>}
-<AssetSection/>
+<Card>
+<div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>💰 Input Cash untuk Simpan Bulanan</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8,marginBottom:10}}>
+<Inp label="Cash di Laci (Rp)" type="number" value={cashLaci} onChange={setCashLaci}/>
+<Inp label="Saldo Bank BSI (Rp)" type="number" value={rekBSI} onChange={setRekBSI}/>
+<Inp label="Saldo Bank BCA (Rp)" type="number" value={rekBCA} onChange={setRekBCA}/>
+</div>
+</Card>
 <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
 <Btn color="green" onClick={saveBulanan}>💾 Simpan</Btn>
 <button onClick={()=>doPrint("_tb_bln")} style={{background:C.blu,color:"#fff",border:"none",padding:"9px 16px",borderRadius:8,fontSize:13,cursor:"pointer",fontWeight:700}}>🖨️ Cetak</button>
@@ -1564,7 +2073,127 @@ return <div>
 </div>
 </div>}
 
-{(data.tutupBuku||[]).length>0&&<Card style={{marginTop:16}}><div style={{fontWeight:700,color:C.gl2,marginBottom:8,fontSize:13}}>📜 Riwayat Tutup Buku</div><RTbl headers={["Tanggal/Bulan","Omzet","Laba","Asset"]} rows={(data.tutupBuku||[]).slice(0,20).map(r=>[r.bulan||fDs(r.tanggal),fR(r.omzet||0),<b style={{color:(r.labaBersih||0)>=0?C.glt:C.rlt}}>{fR(r.labaBersih||0)}</b>,fR(r.assetValue||0)])}/></Card>}
+{(data.tutupBuku||[]).length>0&&<Card style={{marginTop:16}}>
+<div style={{fontWeight:700,color:C.gl2,marginBottom:8,fontSize:13}}>📜 Riwayat Tutup Buku</div>
+<RTbl headers={["Tanggal/Bulan","Transaksi","Omzet","Laba Bersih","Asset","Aksi"]} rows={(data.tutupBuku||[]).slice(0,30).map(r=>[
+  <div><div style={{fontWeight:700,color:C.wht}}>{r.bulan?BULAN_ID[Number(r.bulan.split("-")[1])-1]+" "+r.bulan.split("-")[0]:fDs(r.tanggal)}</div><div style={{fontSize:10,color:C.gl2}}>{r.bulan?"Bulanan":"Harian"}</div></div>,
+  <span style={{color:C.blt,fontWeight:700}}>{r.detail?.jumlahTransaksi||"-"} inv{r.detail?.jumlahDO?", "+r.detail.jumlahDO+" DO":""}</span>,
+  fR(r.omzet||0),
+  <b style={{color:(r.labaBersih||0)>=0?C.glt:C.rlt}}>{fR(r.labaBersih||0)}</b>,
+  fR(r.assetValue||0),
+  <div style={{display:"flex",gap:4}}>
+<button onClick={()=>setViewTB(r)} style={{background:C.inHv,border:"1px solid "+C.blt,borderRadius:6,padding:"4px 8px",color:C.blt,cursor:"pointer",fontSize:11,fontWeight:700}}>👁️ Lihat</button>
+<button onClick={()=>{setEditTB(r);setTab("harian");window.scrollTo(0,0);}} style={{background:"#78350F",border:"1px solid #F59E0B",borderRadius:6,padding:"4px 8px",color:"#FCD34D",cursor:"pointer",fontSize:11,fontWeight:700}}>✏️ Edit</button>
+<button onClick={()=>{setViewTB(r);setTimeout(()=>doPrint("_tb_view"),300);}} style={{background:C.nav,border:"1px solid "+C.bdr,borderRadius:6,padding:"4px 8px",color:C.gl2,cursor:"pointer",fontSize:11,fontWeight:700}}>🖨️ Cetak</button>
+</div>
+])}/>
+</Card>}
+
+{/* Modal Detail Tutup Buku */}
+{viewTB&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",zIndex:9000,overflowY:"auto",padding:16}}>
+<div id="_tb_view" style={{maxWidth:680,margin:"0 auto",background:C.card,borderRadius:12,border:"1px solid "+C.bdr,padding:20}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+<div><div style={{fontSize:16,fontWeight:800,color:C.wht}}>📒 Laporan Tutup Buku</div><div style={{fontSize:12,color:C.gl2}}>{viewTB.bulan?BULAN_ID[Number(viewTB.bulan.split("-")[1])-1]+" "+viewTB.bulan.split("-")[0]:fDs(viewTB.tanggal)}</div></div>
+<button onClick={()=>setViewTB(null)} style={{background:C.nav,border:"1px solid "+C.bdr,borderRadius:8,padding:"6px 14px",color:C.wht,cursor:"pointer",fontWeight:700}}>✕ Tutup</button>
+</div>
+
+{/* Ringkasan P&L */}
+
+{/* SECTION 1: CASH FLOW */}
+<div style={{background:C.nav,borderRadius:8,border:"1px solid "+C.bdr,overflow:"hidden",marginBottom:12}}>
+<div style={{padding:"8px 14px",borderBottom:"1px solid "+C.bdr,fontWeight:700,color:C.blt,fontSize:12}}>💰 CASH FLOW / OMSET</div>
+{[["Cash di Laci",viewTB.cashLaci,C.wht],["Bank BSI",viewTB.rekBSI,C.gl2],["Bank BCA",viewTB.rekBCA,C.gl2],["Total Cash + Bank",(viewTB.cashLaci||0)+(viewTB.rekBSI||0)+(viewTB.rekBCA||0),C.wht,true],["Stok Isi Gudang (HPP)",viewTB.nilaiStokA,C.gl2],["DO Gantung",viewTB.nilaiDOGantung||0,"#F59E0B"],["BON Konsumen",viewTB.piutangA,C.gl2],["Pinjaman Karyawan",viewTB.pinjamanA,C.gl2],["PIUTANG & MODAL BERJALAN",(viewTB.nilaiStokA||0)+(viewTB.nilaiDOGantung||0)+(viewTB.piutangA||0)+(viewTB.pinjamanA||0),C.wht,true],["TOTAL CASH FLOW",viewTB.cashFlowOmset,C.glt,true]].map((x,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:x[3]?"9px 14px":"6px 14px",background:x[3]?C.card:"transparent",borderBottom:"1px solid "+C.bdr}}><span style={{color:x[3]?C.wht:C.gl2,fontWeight:x[3]?700:400,fontSize:12}}>{x[0]}</span><span style={{color:x[2],fontWeight:x[3]?800:600,fontSize:x[3]?14:12}}>{fR(x[1]||0)}</span></div>)}
+</div>
+
+{/* SECTION 2: P&L */}
+<div style={{background:C.nav,borderRadius:8,border:"1px solid "+C.bdr,overflow:"hidden",marginBottom:12}}>
+<div style={{padding:"8px 14px",borderBottom:"1px solid "+C.bdr,fontWeight:700,color:C.glt,fontSize:12}}>📊 P&L — {fDs(viewTB.tanggal)}</div>
+{[["Omzet",viewTB.omzet,C.wht],["HPP / Modal",viewTB.hpp,C.gl2],["Laba Kotor",viewTB.labaKotor,C.blt,true],["Pengeluaran Ops",viewTB.totalOut,C.rlt],["Pemasukan Lainnya",viewTB.pemasukanLain||0,"#F59E0B"],["LABA BERSIH",viewTB.labaBersih,viewTB.labaBersih>=0?C.glt:C.rlt,true]].map((x,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:x[3]?"9px 14px":"6px 14px",background:x[3]?C.card:"transparent",borderBottom:"1px solid "+C.bdr}}><span style={{color:x[3]?C.wht:C.gl2,fontWeight:x[3]?700:400,fontSize:12}}>{x[0]}</span><span style={{color:x[2],fontWeight:x[3]?800:600,fontSize:x[3]?14:12}}>{fR(x[1]||0)}</span></div>)}
+</div>
+
+{/* SECTION 3: VERIFIKASI */}
+<div style={{background:C.nav,borderRadius:8,border:"1px solid "+C.bdr,overflow:"hidden",marginBottom:12}}>
+<div style={{padding:"8px 14px",borderBottom:"1px solid "+C.bdr,fontWeight:700,color:C.blt,fontSize:12}}>✅ Verifikasi Cash Flow</div>
+{[["Cash Flow Kemarin",viewTB.cashFlowKemarin||0,C.gl2],["Laba Hari Ini",viewTB.labaBersih,C.glt],["Cash Flow Hari Ini",viewTB.cashFlowOmset,C.blt,true],["Selisih",viewTB.deltaSelisih||0,Math.abs(viewTB.deltaSelisih||0)<1000?C.glt:C.rlt,true]].map((x,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:x[3]?"9px 14px":"6px 14px",background:x[3]?C.card:"transparent",borderBottom:"1px solid "+C.bdr}}><span style={{color:x[3]?C.wht:C.gl2,fontWeight:x[3]?700:400,fontSize:12}}>{x[0]}</span><span style={{color:x[2],fontWeight:x[3]?800:600,fontSize:x[3]?14:12}}>{fR(x[1]||0)}</span></div>)}
+</div>
+
+{/* SECTION 4: TOTAL ASSET */}
+<div style={{background:C.nav,borderRadius:8,border:"1px solid "+C.bdr,overflow:"hidden",marginBottom:12}}>
+<div style={{padding:"8px 14px",borderBottom:"1px solid "+C.bdr,fontWeight:700,color:C.olt,fontSize:12}}>🏦 TOTAL ASSET</div>
+{[["Total Cash Flow",viewTB.cashFlowOmset,C.blt],["Asset Tabung Milik PT",viewTB.assetTabungMilikPT||0,C.gl2],["Asset Armada",viewTB.assetArmada||0,C.gl2],["TOTAL ASSET",viewTB.assetValue,C.olt,true]].map((x,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:x[3]?"9px 14px":"6px 14px",background:x[3]?C.card:"transparent",borderBottom:"1px solid "+C.bdr}}><span style={{color:x[3]?C.wht:C.gl2,fontWeight:x[3]?700:400,fontSize:12}}>{x[0]}</span><span style={{color:x[2],fontWeight:x[3]?800:600,fontSize:x[3]?14:12}}>{fR(x[1]||0)}</span></div>)}
+</div>
+
+{/* SECTION 5: REKAP TABUNG */}
+{viewTB.detail?.stokSnapshot&&<div style={{background:C.nav,borderRadius:8,border:"1px solid "+C.bdr,overflow:"hidden",marginBottom:12}}>
+<div style={{padding:"8px 14px",borderBottom:"1px solid "+C.bdr,fontWeight:700,color:C.gl2,fontSize:12}}>📦 Rekap Tabung</div>
+<table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+<thead><tr style={{background:C.card}}>{["Keterangan","12 kg","5,5 kg","50 kg"].map(h=><th key={h} style={{padding:"6px 10px",color:C.gl2,fontWeight:700,textAlign:h==="Keterangan"?"left":"center",borderBottom:"1px solid "+C.bdr}}>{h}</th>)}</tr></thead>
+<tbody>
+{[["(Tbg+Isi) Di Gudang","isi",C.glt],["Tbg Kosong Di Gudang","kosong",C.gl2],["Titip di Konsumen","titip",C.blt]].map((row,i)=><tr key={i} style={{borderBottom:"1px solid "+C.bdr}}>
+<td style={{padding:"6px 10px",color:C.gl2}}>{row[0]}</td>
+{SIZES.map((s,j)=><td key={j} style={{padding:"6px 10px",textAlign:"center",color:row[2],fontWeight:600}}>{(viewTB.detail.stokSnapshot[s]||{})[row[1]]||0}</td>)}
+</tr>)}
+<tr style={{background:C.card,borderBottom:"1px solid "+C.bdr}}>
+<td style={{padding:"7px 10px",color:C.wht,fontWeight:700}}>Total Keseluruhan</td>
+{SIZES.map((s,j)=>{var sn=viewTB.detail.stokSnapshot[s]||{};var tot=(sn.isi||0)+(sn.kosong||0)+(sn.titip||0);return <td key={j} style={{padding:"7px 10px",textAlign:"center",color:C.olt,fontWeight:800,fontSize:14}}>{tot}</td>;})}
+</tr>
+</tbody>
+</table>
+</div>}
+
+{/* Komposisi Bayar */}
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
+{[["Cash",viewTB.cashIn,C.glt],["Transfer",viewTB.tfIn,C.blt],["BON",viewTB.bonIn,C.olt]].map(x=><div key={x[0]} style={{background:C.nav,borderRadius:8,padding:"8px 10px",textAlign:"center",border:"1px solid "+C.bdr}}><div style={{fontSize:10,color:C.gl2}}>{x[0]}</div><div style={{fontSize:14,fontWeight:800,color:x[2]}}>{fR(x[1]||0)}</div></div>)}
+</div>
+
+{/* DO Masuk */}
+{viewTB.detail?.doMasuk?.length>0&&<div style={{marginBottom:12}}>
+<div style={{fontWeight:700,color:C.gl2,fontSize:12,marginBottom:6}}>🚚 DO Masuk ({viewTB.detail.doMasuk.length} DO)</div>
+<div style={{background:C.nav,borderRadius:8,border:"1px solid "+C.bdr,overflow:"hidden"}}>
+{viewTB.detail.doMasuk.map((d,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"6px 12px",borderBottom:"1px solid "+C.bdr,fontSize:12}}><span style={{color:C.gl2}}>{d.trip} — {d.sppbe}</span><span style={{color:C.wht,fontWeight:700}}>{d.ukuran} × {d.qty} tab · HPP {fR(d.totalHPP||0)}</span></div>)}
+</div>
+</div>}
+
+{/* Pengeluaran per kategori */}
+{viewTB.detail?.katPengeluaran&&Object.keys(viewTB.detail.katPengeluaran).length>0&&<div style={{marginBottom:12}}>
+<div style={{fontWeight:700,color:C.gl2,fontSize:12,marginBottom:6}}>💸 Pengeluaran per Kategori</div>
+<div style={{background:C.nav,borderRadius:8,border:"1px solid "+C.bdr,overflow:"hidden"}}>
+{Object.entries(viewTB.detail.katPengeluaran).sort((a,b)=>b[1]-a[1]).map(([k,v],i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"6px 12px",borderBottom:"1px solid "+C.bdr,fontSize:12}}><span style={{color:C.gl2}}>{k}</span><span style={{color:C.rlt,fontWeight:700}}>{fR(v)}</span></div>)}
+</div>
+</div>}
+
+{/* Stok Snapshot */}
+{viewTB.detail?.stokSnapshot&&<div style={{marginBottom:12}}>
+<div style={{fontWeight:700,color:C.gl2,fontSize:12,marginBottom:6}}>📦 Snapshot Stok Saat Tutup Buku</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
+{SIZES.map(s=>{var sn=viewTB.detail.stokSnapshot[s]||{};return <div key={s} style={{background:C.nav,borderRadius:8,padding:"8px 10px",border:"1px solid "+C.bdr}}>
+<div style={{fontSize:11,fontWeight:700,color:C.wht,marginBottom:4}}>{s}</div>
+{[["Isi",sn.isi,C.glt],["Titip",sn.titip,C.blt],["Kosong",sn.kosong,C.gl2]].map(x=><div key={x[0]} style={{display:"flex",justifyContent:"space-between",fontSize:11}}><span style={{color:C.gl2}}>{x[0]}</span><span style={{color:x[2],fontWeight:700}}>{x[1]||0}</span></div>)}
+</div>;})}
+</div>
+</div>}
+
+{/* Daftar Penjualan */}
+{viewTB.detail?.penjualan?.length>0&&<div>
+<div style={{fontWeight:700,color:C.gl2,fontSize:12,marginBottom:6}}>🧾 Transaksi Penjualan ({viewTB.detail.penjualan.length} invoice)</div>
+<div style={{background:C.nav,borderRadius:8,border:"1px solid "+C.bdr,overflow:"hidden",maxHeight:200,overflowY:"auto"}}>
+{viewTB.detail.penjualan.map((p,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 12px",borderBottom:"1px solid "+C.bdr,fontSize:12}}>
+<div><div style={{color:C.blt,fontWeight:700}}>{p.noInv}</div><div style={{color:C.gl2,fontSize:11}}>{p.konsumen}</div></div>
+<div style={{textAlign:"right"}}><div style={{color:C.wht,fontWeight:700}}>{fR(p.total)}</div><div style={{fontSize:10}}><Bdg color={p.bayar==="bon"?"red":p.bayar==="transfer"?"blue":"green"}>{p.bayar}</Bdg></div></div>
+</div>)}
+</div>
+</div>}
+
+<div style={{marginTop:14,display:"flex",gap:8,flexWrap:"wrap"}}>
+{(()=>{var fn=makeFileName("tb",viewTB.tanggal,"","");return <>
+<button onClick={()=>doPrint("_tb_view",fn+".pdf")} style={{background:C.blu,border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:12}}>🖨️ Cetak / PDF</button>
+<button onClick={()=>doDownloadPNG("_tb_view",fn+".png")} style={{background:"#1D6A96",border:"none",borderRadius:8,padding:"8px 14px",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:12}}>💾 Download PNG</button>
+<button onClick={()=>doCopyPNG("_tb_view")} style={{background:"#145A32",border:"none",borderRadius:8,padding:"8px 14px",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:12}}>📋 Copy PNG</button>
+<button onClick={()=>setViewTB(null)} style={{background:C.nav,border:"1px solid "+C.bdr,borderRadius:8,padding:"8px 14px",color:C.wht,cursor:"pointer",fontWeight:700,fontSize:12}}>✕ Tutup</button>
+</>;})()}
+</div>
+</div>
+</div>}
 </div>;
 }
 
@@ -1607,7 +2236,22 @@ var detailRows=penjFilt.map(p=>{var emp=(data.employees||[]).find(e=>e.id===p.sa
 
 // Chart (hanya bulanan)
 var chartData=[];
-if(mode==="bulanan"){var dim2=daysInMonth(bln);for(var d=1;d<=dim2;d++){var ds=bln+"-"+String(d).padStart(2,"0");var pp=penjAll.filter(x=>x.tanggal===ds);var oz=pp.reduce((a,x)=>a+(x.total||0),0);var mg=pp.reduce((a,x)=>a+(x.margin||0),0);var pn=(data.pengeluaran||[]).filter(x=>x.tanggal===ds).reduce((a,x)=>a+Number(x.nominal||0),0);chartData.push({tgl:String(d),omzet:oz,labaBersih:mg-pn});}}
+if(mode==="bulanan"){
+  var dim2=daysInMonth(bln);
+  var cfKumul=0;
+  var doBlnLap=(data.doList||[]).filter(e=>(e.tanggal||"").startsWith(bln)&&(e.status||"diterima")==="diterima");
+  for(var d=1;d<=dim2;d++){
+    var ds=bln+"-"+String(d).padStart(2,"0");
+    var pp=penjAll.filter(x=>x.tanggal===ds);
+    var oz=pp.reduce((a,x)=>a+(x.total||0),0);
+    var mg=pp.reduce((a,x)=>a+(x.margin||0),0);
+    var pn=(data.pengeluaran||[]).filter(x=>x.tanggal===ds).reduce((a,x)=>a+Number(x.nominal||0),0);
+    var hpp=doBlnLap.filter(x=>x.tanggal===ds).reduce((a,x)=>a+Number(x.totalHPP||0),0);
+    var lb=mg-pn;
+    cfKumul+=lb;
+    chartData.push({tgl:String(d),omzet:oz,hpp,marginKotor:mg,pengeluaran:pn,labaBersih:lb,cashFlow:cfKumul});
+  }
+}
 
 function exportExcel(){
 var wb=XLSX.utils.book_new();
@@ -1635,10 +2279,10 @@ return <div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10,marginBottom:14}}>
 {[["Omzet",omzet,C.wht,"📈"],["Laba Kotor",margin,C.blt,"💹"],["Pengeluaran",pengeluaran,C.rlt,"💸"],["Laba Bersih",labaBersih,labaBersih>=0?C.glt:C.rlt,"🏆"],["Transaksi",penjFilt.length+" trx",C.gl2,"🧾"]].map(x=><SC key={x[0]} label={x[0]} value={typeof x[1]==="number"?fR(x[1]):x[1]} icon={x[3]} color={x[2]}/>)}
 </div>
-<div style={{display:"flex",gap:5,marginBottom:14,flexWrap:"wrap"}}>{[["ringkasan","📊 Ringkasan"],["sales","👤 Per Sales"],["kategori","🏷️ Per Kategori"],["produk","📦 Per Produk"],["pelanggan","👥 Per Pelanggan"],["matrix","📋 Sales×Kategori"],["detail","🔍 Detail"]].map(x=><button key={x[0]} onClick={()=>setTab(x[0])} style={{background:tab===x[0]?C.blu:C.nav,color:tab===x[0]?"white":C.wht,border:"1px solid "+(tab===x[0]?C.blt:C.bdr),borderRadius:8,padding:"6px 11px",fontWeight:700,fontSize:11,cursor:"pointer"}}>{x[1]}</button>)}</div>
+<div style={{display:"flex",gap:5,marginBottom:14,flexWrap:"wrap"}}>{[["ringkasan","📊 Ringkasan"],["grafik","📈 Grafik"],["sales","👤 Per Sales"],["kategori","🏷️ Per Kategori"],["produk","📦 Per Produk"],["pelanggan","👥 Per Pelanggan"],["matrix","📋 Sales×Kategori"],["detail","🔍 Detail"]].map(x=><button key={x[0]} onClick={()=>setTab(x[0])} style={{background:tab===x[0]?C.blu:C.nav,color:tab===x[0]?"white":C.wht,border:"1px solid "+(tab===x[0]?C.blt:C.bdr),borderRadius:8,padding:"6px 11px",fontWeight:700,fontSize:11,cursor:"pointer"}}>{x[1]}</button>)}</div>
 {tab==="ringkasan"&&<>
 <Card><div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>💰 Komposisi Pembayaran</div><div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>{[["Cash",cash,C.glt],["Transfer",tf,C.blt],["BON",bon,C.olt]].map(x=><div key={x[0]} style={{background:C.nav,borderRadius:8,padding:"10px 12px",border:"1px solid "+C.bdr,textAlign:"center"}}><div style={{fontSize:11,color:C.gl2}}>{x[0]}</div><div style={{fontSize:14,fontWeight:900,color:x[2]}}>{fR(x[1])}</div><div style={{fontSize:10,color:C.gl2,marginTop:2}}>{omzet>0?(x[1]/omzet*100).toFixed(1):0}%</div></div>)}</div></Card>
-{mode==="bulanan"&&chartData.some(d=>d.omzet>0)&&<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>📈 Tren Bulanan</div><ResponsiveContainer width="100%" height={240}><AreaChart data={chartData}><CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/><XAxis dataKey="tgl" stroke={C.gl2} fontSize={11}/><YAxis stroke={C.gl2} fontSize={11} tickFormatter={v=>"Rp "+(v/1e6).toFixed(1)+"jt"}/><Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht}} formatter={v=>fR(v)}/><Legend/><Area type="monotone" dataKey="omzet" stroke={C.blt} fill={C.blt} fillOpacity={0.3} name="Omzet"/><Area type="monotone" dataKey="labaBersih" stroke={C.glt} fill={C.glt} fillOpacity={0.3} name="Laba Bersih"/></AreaChart></ResponsiveContainer></Card>}
+
 </>}
 {tab==="sales"&&<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>👤 Per Sales</div><FilterTbl columns={salesCols} data={salesArr} empty="Tidak ada data"/></Card>}
 {tab==="kategori"&&<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>🏷️ Per Kategori Pelanggan</div><FilterTbl columns={katCols} data={katArr} empty="Tidak ada data"/>{katArr.length>0&&<div style={{marginTop:14}}><ResponsiveContainer width="100%" height={220}><PieChart><Pie data={katArr.slice(0,8)} dataKey="omzet" nameKey="kategori" cx="50%" cy="50%" outerRadius={80} label={x=>x.kategori}>{katArr.slice(0,8).map((e,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}</Pie><Tooltip formatter={v=>fR(v)} contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht}}/></PieChart></ResponsiveContainer></div>}</Card>}
@@ -1646,6 +2290,88 @@ return <div>
 {tab==="pelanggan"&&<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>👥 Ranking Pelanggan per Omzet</div><FilterTbl columns={plgCols} data={plgArr} empty="Tidak ada data"/></Card>}
 {tab==="matrix"&&<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>📋 Sales × Kategori</div><FilterTbl columns={skCols} data={skArr} empty="Tidak ada data"/></Card>}
 {tab==="detail"&&<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>🔍 Detail Penjualan ({penjFilt.length})</div><FilterTbl columns={detCols} data={detailRows} empty="Tidak ada data" maxRows={300}/></Card>}
+
+{tab==="grafik"&&<div>
+{mode!=="bulanan"?<Card><div style={{color:C.gl2,fontSize:13,textAlign:"center",padding:20}}>📈 Grafik hanya tersedia untuk mode Bulanan</div></Card>:
+!chartData.some(d=>d.omzet>0)?<Card><div style={{color:C.gl2,fontSize:13,textAlign:"center",padding:20}}>Belum ada data penjualan bulan ini</div></Card>:<>
+
+{/* Ringkasan bulanan */}
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8,marginBottom:14}}>
+{[["Total Omzet",omzet,C.wht,"📈"],["HPP/Modal DO",doBlnLap.reduce((a,d)=>a+Number(d.totalHPP||0),0),C.olt,"🏭"],["Margin Kotor",margin,C.blt,"💹"],["Pengeluaran Ops",pengeluaran,C.rlt,"💸"],["Laba Bersih",labaBersih,labaBersih>=0?C.glt:C.rlt,"🏆"],["Cash Flow Akhir",chartData[chartData.length-1]?.cashFlow||0,(chartData[chartData.length-1]?.cashFlow||0)>=0?C.glt:C.rlt,"💰"]].map(x=><div key={x[0]} style={{background:C.card,borderRadius:8,padding:"10px 12px",border:"1px solid "+C.bdr}}><div style={{fontSize:9,color:C.gl2,marginBottom:2}}>{x[3]} {x[0]}</div><div style={{fontSize:13,fontWeight:800,color:x[2]}}>{fR(x[1])}</div></div>)}
+</div>
+
+{/* Grafik 1: Omzet & HPP */}
+<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:8,fontSize:12}}>📈 1. Omzet Penjualan & Modal HPP per Hari</div>
+<ResponsiveContainer width="100%" height={200}><AreaChart data={chartData} margin={{top:4,right:10,bottom:0,left:10}}>
+<CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/>
+<XAxis dataKey="tgl" stroke={C.gl2} fontSize={9}/>
+<YAxis stroke={C.gl2} fontSize={9} tickFormatter={v=>(v/1e6).toFixed(1)+"jt"}/>
+<Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht,fontSize:11}} formatter={(v,n)=>[fR(v),n]}/>
+<Legend wrapperStyle={{fontSize:11,color:C.gl2}}/>
+<Area type="monotone" dataKey="omzet" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.25} name="Omzet"/>
+<Area type="monotone" dataKey="hpp" stroke="#F59E0B" fill="#F59E0B" fillOpacity={0.2} name="HPP/Modal DO"/>
+</AreaChart></ResponsiveContainer></Card>
+
+{/* Grafik 2: Margin vs Pengeluaran */}
+<Card style={{marginTop:10}}><div style={{fontWeight:700,color:C.gl2,marginBottom:8,fontSize:12}}>💹 2. Margin Kotor vs Pengeluaran Operasional per Hari</div>
+<ResponsiveContainer width="100%" height={200}><BarChart data={chartData} margin={{top:4,right:10,bottom:0,left:10}}>
+<CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/>
+<XAxis dataKey="tgl" stroke={C.gl2} fontSize={9}/>
+<YAxis stroke={C.gl2} fontSize={9} tickFormatter={v=>(v/1e6).toFixed(1)+"jt"}/>
+<Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht,fontSize:11}} formatter={(v,n)=>[fR(v),n]}/>
+<Legend wrapperStyle={{fontSize:11,color:C.gl2}}/>
+<Bar dataKey="marginKotor" fill="#3B82F6" name="Margin Kotor" opacity={0.85}/>
+<Bar dataKey="pengeluaran" fill="#EF4444" name="Pengeluaran Ops" opacity={0.85}/>
+</BarChart></ResponsiveContainer></Card>
+
+{/* Grafik 3: Laba Bersih per hari */}
+<Card style={{marginTop:10}}><div style={{fontWeight:700,color:C.gl2,marginBottom:8,fontSize:12}}>🏆 3. Laba Bersih per Hari (bar hijau=untung, merah=rugi)</div>
+<ResponsiveContainer width="100%" height={180}><BarChart data={chartData} margin={{top:4,right:10,bottom:0,left:10}}>
+<CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/>
+<XAxis dataKey="tgl" stroke={C.gl2} fontSize={9}/>
+<YAxis stroke={C.gl2} fontSize={9} tickFormatter={v=>(v/1e6).toFixed(1)+"jt"}/>
+<Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht,fontSize:11}} formatter={(v,n)=>[fR(v),n]}/>
+{chartData.map((entry,index)=><Cell key={index} fill={entry.labaBersih>=0?"#22C55E":"#EF4444"}/>)}
+<Bar dataKey="labaBersih" name="Laba Bersih">{chartData.map((entry,index)=><Cell key={index} fill={entry.labaBersih>=0?"#22C55E":"#EF4444"}/>)}</Bar>
+</BarChart></ResponsiveContainer></Card>
+
+{/* Grafik 4: Cash Flow Kumulatif — PALING PENTING */}
+<Card style={{marginTop:10,border:"2px solid "+C.glt}}><div style={{fontWeight:700,color:C.glt,marginBottom:8,fontSize:12}}>💰 4. Cash Flow Kumulatif Bulanan (PALING PENTING)</div>
+<div style={{fontSize:11,color:C.gl2,marginBottom:8}}>Akumulasi laba bersih dari hari 1 sampai akhir bulan — naik = bisnis sehat</div>
+<ResponsiveContainer width="100%" height={220}><AreaChart data={chartData} margin={{top:4,right:10,bottom:0,left:10}}>
+<CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/>
+<XAxis dataKey="tgl" stroke={C.gl2} fontSize={9}/>
+<YAxis stroke={C.gl2} fontSize={9} tickFormatter={v=>(v/1e6).toFixed(1)+"jt"}/>
+<Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht,fontSize:11}} formatter={(v,n)=>[fR(v),n]}/>
+<defs><linearGradient id="cfGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#22C55E" stopOpacity={0.4}/><stop offset="95%" stopColor="#22C55E" stopOpacity={0}/></linearGradient></defs>
+<Area type="monotone" dataKey="cashFlow" stroke="#22C55E" fill="url(#cfGrad)" strokeWidth={2} name="Cash Flow Kumulatif"/>
+<ReferenceLine y={0} stroke={C.rlt} strokeDasharray="4 4"/>
+</AreaChart></ResponsiveContainer></Card>
+
+{/* Grafik 5: Top 10 Konsumen */}
+{plgArr.length>0&&<Card style={{marginTop:10}}><div style={{fontWeight:700,color:C.gl2,marginBottom:8,fontSize:12}}>👥 5. Top 10 Pelanggan bulan ini</div>
+<ResponsiveContainer width="100%" height={220}><BarChart layout="vertical" data={plgArr.slice().sort((a,b)=>b.omzet-a.omzet).slice(0,10)} margin={{top:4,right:60,bottom:0,left:10}}>
+<CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/>
+<XAxis type="number" stroke={C.gl2} fontSize={9} tickFormatter={v=>(v/1e6).toFixed(1)+"jt"}/>
+<YAxis type="category" dataKey="nama" stroke={C.gl2} fontSize={9} width={100}/>
+<Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht,fontSize:11}} formatter={v=>fR(v)}/>
+<Bar dataKey="omzet" fill="#3B82F6" name="Omzet" radius={[0,4,4,0]}/>
+</BarChart></ResponsiveContainer></Card>}
+
+{/* Grafik 6: Per Sales */}
+{salesArr.length>0&&<Card style={{marginTop:10}}><div style={{fontWeight:700,color:C.gl2,marginBottom:8,fontSize:12}}>👤 6. Omzet per Sales</div>
+<ResponsiveContainer width="100%" height={Math.max(160,salesArr.length*45)}><BarChart layout="vertical" data={salesArr.slice().sort((a,b)=>b.omzet-a.omzet)} margin={{top:4,right:60,bottom:0,left:10}}>
+<CartesianGrid strokeDasharray="3 3" stroke={C.bdr}/>
+<XAxis type="number" stroke={C.gl2} fontSize={9} tickFormatter={v=>(v/1e6).toFixed(1)+"jt"}/>
+<YAxis type="category" dataKey="nama" stroke={C.gl2} fontSize={9} width={100}/>
+<Tooltip contentStyle={{background:C.card,border:"1px solid "+C.bdr,color:C.wht,fontSize:11}} formatter={v=>fR(v)}/>
+<Bar dataKey="omzet" fill="#8B5CF6" name="Omzet" radius={[0,4,4,0]}/>
+<Bar dataKey="margin" fill="#22C55E" name="Margin" radius={[0,4,4,0]}/>
+</BarChart></ResponsiveContainer></Card>}
+
+</>}
+</div>}
+
 </div>;
 }
 
@@ -1734,6 +2460,16 @@ return <div>
 <Card><div style={{fontWeight:700,color:C.gl2,marginBottom:12,fontSize:13}}>📦 Update Modal/HPP Manual</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:10}}><Sel label="Jenis" value={mP.jenis} onChange={v=>setMP(p=>({...p,jenis:v}))} opts={JENIS}/><Sel label="Ukuran" value={mP.ukuran} onChange={v=>setMP(p=>({...p,ukuran:v}))} opts={SIZES}/><Inp label={"Modal ("+fR(getModal(data,mP.ukuran,mP.jenis))+")"} type="number" value={mP.harga} onChange={v=>setMP(p=>({...p,harga:v}))}/><Inp label="Berlaku Dari" type="date" value={mP.tgl} onChange={v=>setMP(p=>({...p,tgl:v}))}/></div>
 <Btn color="green" onClick={saveModal} dis={!mP.harga}>💾 Update Modal</Btn></Card>
+<Card><div style={{fontWeight:700,color:C.gl2,marginBottom:12,fontSize:13}}>🚛 Asset & Harga Tabung</div>
+<div style={{fontSize:11,color:C.gl2,marginBottom:10}}>Untuk kalkulasi Asset Tabung Milik PT di Tutup Buku:</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10,marginBottom:12}}>
+<Inp label="Asset Armada (Rp)" type="number" value={f.assetArmada||""} onChange={v=>setF(p=>({...p,assetArmada:Number(v)||0}))} placeholder="Nilai kendaraan operasional"/>
+<Inp label="Harga Tbg Kosong 5,5kg" type="number" value={(f.hargaTbgKosong&&f.hargaTbgKosong["5.5 kg"])||""} onChange={v=>setF(p=>({...p,hargaTbgKosong:{...(p.hargaTbgKosong||{}),["5.5 kg"]:Number(v)||0}}))} placeholder="Harga jual Tbg+Isi - HPP isi"/>
+<Inp label="Harga Tbg Kosong 12kg" type="number" value={(f.hargaTbgKosong&&f.hargaTbgKosong["12 kg"])||""} onChange={v=>setF(p=>({...p,hargaTbgKosong:{...(p.hargaTbgKosong||{}),["12 kg"]:Number(v)||0}}))} placeholder="Harga jual Tbg+Isi - HPP isi"/>
+<Inp label="Harga Tbg Kosong 50kg" type="number" value={(f.hargaTbgKosong&&f.hargaTbgKosong["50 kg"])||""} onChange={v=>setF(p=>({...p,hargaTbgKosong:{...(p.hargaTbgKosong||{}),["50 kg"]:Number(v)||0}}))} placeholder="Harga jual Tbg+Isi - HPP isi"/>
+</div>
+<Btn color="blue" onClick={saveCompany}>💾 Simpan</Btn>
+</Card>
 <Card><div style={{fontWeight:700,color:C.gl2,marginBottom:12,fontSize:13}}>🏭 Kode Pertamina</div>
 <div style={{fontSize:11,color:C.gl2,marginBottom:10,fontStyle:"italic"}}>🔒 Kode penebusan (permanen — tidak berubah)</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10,marginBottom:12}}>
@@ -1772,9 +2508,21 @@ useEffect(()=>{try{localStorage.setItem("hts_theme",theme);}catch(e){}},[theme])
 var[data,setData]=useState(()=>{
 try{var s=localStorage.getItem("lpg_mgmt_v4");
 if(s){var d=JSON.parse(s);
+
 if(!d.stokKosong||typeof d.stokKosong!=="object")d.stokKosong={"5.5 kg":0,"12 kg":0,"50 kg":0};
-if(!d.totalTabung||typeof d.totalTabung!=="object")d.totalTabung={"5.5 kg":0,"12 kg":0,"50 kg":0};
 ["5.5 kg","12 kg","50 kg"].forEach(function(s){if(typeof d.stokKosong[s]==="undefined")d.stokKosong[s]=0;});
+if(!d.totalTabung)d.totalTabung={"5.5 kg":0,"12 kg":0,"50 kg":0};
+// Recalc totalTabung = isi + kosong + titip (logika benar)
+(function(){var SIZES_M=["5.5 kg","12 kg","50 kg"];SIZES_M.forEach(function(s){var isi=(d.stock||{})[s]||0;var kosong=(d.stokKosong||{})[s]||0;var titip=0;(d.titipList||[]).forEach(function(t){var items=t.items&&t.items.length>0?t.items:(t.ukuran===s?[{qty:t.qty}]:[]);var m=t.tipe==="titip"?1:t.tipe==="tarik"?-1:0;items.forEach(function(it){if(!t.items||t.items.length===0?true:it.ukuran===s)titip+=m*Number(it.qty||0);});});d.totalTabung[s]=isi+kosong+Math.max(0,titip);});})();
+if(d.pelanggan)d.pelanggan=d.pelanggan.map(p=>({...p,hargaKhusus:Array.isArray(p.hargaKhusus)?p.hargaKhusus:[]}));
+// Migration titipan flat format → items array
+if(d.titipList)d.titipList=d.titipList.map(t=>{
+  if(t.items&&t.items.length>0)return t;
+  if(t.ukuran&&t.qty)return{...t,items:[{ukuran:t.ukuran,qty:Number(t.qty||0)}]};
+  return t;
+});
+// Migration DO lama → status diterima (stok sudah masuk)
+if(d.doList)d.doList=d.doList.map(x=>x.status?x:{...x,status:"diterima"});
 if(!d.titipList)d.titipList=[];
 if(!d.counters)d.counters={inv:{},sg:{},reg:0};
 if(!d.company)d.company={...INIT.company};
