@@ -2791,3 +2791,5 @@ return <ThemeCtx.Provider value={C}>
 </ThemeCtx.Provider>;
 }
 // === SELESAI BAGIAN 4 — FILE v4 LENGKAP ===
+// BUILD: v4.2-20260604-2231
+console.log("[HTS-APP] Build: v4.2-20260604-2231 — editPenj, TitipTab, StokFix loaded");
