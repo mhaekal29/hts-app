@@ -116,7 +116,7 @@ async function pushAll(data,setSyncStatus){
     tasks.push(gasWrite("setoranLog",data.setoranLog||[]));
     tasks.push(gasWrite("tutupBuku",data.tutupBuku||[]));
     // stok & config sebagai object → wrap dalam array
-    tasks.push(gasWrite("stok",[{key:"stok",val:JSON.stringify({stock:data.stock,stokKosong:data.stokKosong,totalTabung:data.totalTabung,stockLog:data.stockLog,modalHistory:data.modalHistory,hetPrices:data.hetPrices,counters:data.counters,theme:data.theme})}]));
+    tasks.push(gasWrite("stok",[{key:"stok",val:JSON.stringify({stock:data.stock,stokKosong:data.stokKosong,totalTabung:data.totalTabung,stokHarian:data.stokHarian,stockLog:data.stockLog,modalHistory:data.modalHistory,hetPrices:data.hetPrices,counters:data.counters,theme:data.theme})}]));
     tasks.push(gasWrite("config",[{key:"company",val:JSON.stringify(data.company||{})}]));
     await Promise.all(tasks);
     setSyncStatus("ok");
@@ -951,7 +951,7 @@ return <Card key={s} style={{marginBottom:0}}>
 {(()=>{
   var bulanIni=toMonth();
   var rows7=buildStokHarian(data,bulanIni).filter(r=>r.tgl<=td).slice(-7);
-  var uk=["12 kg","5.5 kg","50 kg"];var ukL=["12kg","5,5kg","50kg"];
+  var uk=["5.5 kg","12 kg","50 kg"];var ukL=["5,5kg","12kg","50kg"];
   var C2=C;
   return <div style={{overflowX:"auto"}}>
   <table style={{borderCollapse:"collapse",width:"100%",fontSize:10}}>
@@ -1325,23 +1325,23 @@ var html='<div style="font-family:Arial,sans-serif;padding:20px;color:#111;max-w
 '<div style="font-size:11px;color:#555;margin-top:4px">Hanya saldo aktif (>0) | Dicetak: '+new Date().toLocaleString("id-ID")+'</div>'+
 '</div>'+
 '<table style="width:100%;border-collapse:collapse;font-size:11px">'+
-'<thead><tr style="background:#0a1f44"><th style="color:white;padding:6px 8px;text-align:center;border:1px solid #ccc;width:30px">No</th><th style="color:white;padding:6px 8px;text-align:left;border:1px solid #ccc">Konsumen</th><th style="color:white;padding:6px 8px;text-align:left;border:1px solid #ccc">Sales</th><th style="color:white;padding:6px 8px;text-align:center;border:1px solid #ccc">12 kg</th><th style="color:white;padding:6px 8px;text-align:center;border:1px solid #ccc">5,5 kg</th><th style="color:white;padding:6px 8px;text-align:center;border:1px solid #ccc">50 kg</th><th style="color:white;padding:6px 8px;text-align:center;border:1px solid #ccc;font-weight:900">Total</th><th style="color:white;padding:6px 8px;text-align:left;border:1px solid #ccc">Alamat</th></tr></thead>'+
+'<thead><tr style="background:#0a1f44"><th style="color:white;padding:6px 8px;text-align:center;border:1px solid #ccc;width:30px">No</th><th style="color:white;padding:6px 8px;text-align:left;border:1px solid #ccc">Konsumen</th><th style="color:white;padding:6px 8px;text-align:left;border:1px solid #ccc">Sales</th><th style="color:white;padding:6px 8px;text-align:center;border:1px solid #ccc">5,5 kg</th><th style="color:white;padding:6px 8px;text-align:center;border:1px solid #ccc">12 kg</th><th style="color:white;padding:6px 8px;text-align:center;border:1px solid #ccc">50 kg</th><th style="color:white;padding:6px 8px;text-align:center;border:1px solid #ccc;font-weight:900">Total</th><th style="color:white;padding:6px 8px;text-align:left;border:1px solid #ccc">Alamat</th></tr></thead>'+
 '<tbody>';
 rekapTitip.forEach(function(r,i){
 html+='<tr style="background:'+(i%2===0?'white':'#f9f9f9')+'">'+
 '<td style="padding:5px 8px;border:1px solid #ddd;text-align:center">'+(i+1)+'</td>'+
 '<td style="padding:5px 8px;border:1px solid #ddd;font-weight:600">'+r.konsumen+'</td>'+
 '<td style="padding:5px 8px;border:1px solid #ddd">'+r.salesNama+'</td>'+
-'<td style="padding:5px 8px;border:1px solid #ddd;text-align:center;font-weight:'+(r.s12>0?'700':'400')+';color:'+(r.s12>0?'#1D4ED8':'#aaa')+'">'+(r.s12||'—')+'</td>'+
 '<td style="padding:5px 8px;border:1px solid #ddd;text-align:center;font-weight:'+(r.s55>0?'700':'400')+';color:'+(r.s55>0?'#15803D':'#aaa')+'">'+(r.s55||'—')+'</td>'+
+'<td style="padding:5px 8px;border:1px solid #ddd;text-align:center;font-weight:'+(r.s12>0?'700':'400')+';color:'+(r.s12>0?'#1D4ED8':'#aaa')+'">'+(r.s12||'—')+'</td>'+
 '<td style="padding:5px 8px;border:1px solid #ddd;text-align:center;font-weight:'+(r.s50>0?'700':'400')+';color:'+(r.s50>0?'#D97706':'#aaa')+'">'+(r.s50||'—')+'</td>'+
 '<td style="padding:5px 8px;border:1px solid #ddd;text-align:center;font-weight:900;color:#0a1f44">'+r.total+'</td>'+
 '<td style="padding:5px 8px;border:1px solid #ddd;font-size:10px;color:#666">'+r.alamat+'</td>'+
 '</tr>';});
 html+='<tr style="background:#0a1f44;color:white;font-weight:900">'+
 '<td colspan="3" style="padding:6px 8px;border:1px solid #ccc">TOTAL ('+rekapTitip.length+' konsumen)</td>'+
-'<td style="padding:6px 8px;border:1px solid #ccc;text-align:center">'+tot12+'</td>'+
 '<td style="padding:6px 8px;border:1px solid #ccc;text-align:center">'+tot55+'</td>'+
+'<td style="padding:6px 8px;border:1px solid #ccc;text-align:center">'+tot12+'</td>'+
 '<td style="padding:6px 8px;border:1px solid #ccc;text-align:center">'+tot50+'</td>'+
 '<td style="padding:6px 8px;border:1px solid #ccc;text-align:center">'+totAll+'</td>'+
 '<td style="border:1px solid #ccc"></td></tr>'+
@@ -1356,23 +1356,23 @@ setTimeout(function(){var e=document.getElementById("_lap_titip");if(e)e.remove(
 <div style={{overflowX:"auto"}}>
 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
 <thead><tr style={{background:C.nav}}>
-{["No","Konsumen","Sales","12 kg","5,5 kg","50 kg","Total","Alamat"].map(h=><th key={h} style={{padding:"6px 8px",color:C.gl2,fontWeight:700,textAlign:["12 kg","5,5 kg","50 kg","Total"].includes(h)?"center":"left",borderBottom:"2px solid "+C.bdr,fontSize:11}}>{h}</th>)}
+{["No","Konsumen","Sales","5,5 kg","12 kg","50 kg","Total","Alamat"].map(h=><th key={h} style={{padding:"6px 8px",color:C.gl2,fontWeight:700,textAlign:["12 kg","5,5 kg","50 kg","Total"].includes(h)?"center":"left",borderBottom:"2px solid "+C.bdr,fontSize:11}}>{h}</th>)}
 </tr></thead>
 <tbody>
 {rekapTitip.map((r,i)=><tr key={r.konsumen} style={{borderBottom:"1px solid "+C.bdr,background:i%2===0?C.nav:C.bg}}>
 <td style={{padding:"5px 8px",color:C.gl2,fontSize:11}}>{i+1}</td>
 <td style={{padding:"5px 8px",fontWeight:700,color:C.wht}}>{r.konsumen}</td>
 <td style={{padding:"5px 8px",color:C.gl2,fontSize:11}}>{r.salesNama}</td>
-<td style={{padding:"5px 8px",textAlign:"center",fontWeight:r.s12>0?700:400,color:r.s12>0?C.blt:C.gl2}}>{r.s12||"—"}</td>
 <td style={{padding:"5px 8px",textAlign:"center",fontWeight:r.s55>0?700:400,color:r.s55>0?C.glt:C.gl2}}>{r.s55||"—"}</td>
+<td style={{padding:"5px 8px",textAlign:"center",fontWeight:r.s12>0?700:400,color:r.s12>0?C.blt:C.gl2}}>{r.s12||"—"}</td>
 <td style={{padding:"5px 8px",textAlign:"center",fontWeight:r.s50>0?700:400,color:r.s50>0?C.olt:C.gl2}}>{r.s50||"—"}</td>
 <td style={{padding:"5px 8px",textAlign:"center",fontWeight:900,color:C.wht,fontSize:13}}>{r.total}</td>
 <td style={{padding:"5px 8px",color:C.gl2,fontSize:10}}>{r.alamat||"—"}</td>
 </tr>)}
 <tr style={{background:C.nav,borderTop:"2px solid "+C.bdr}}>
 <td colSpan={3} style={{padding:"6px 8px",fontWeight:700,color:C.wht}}>TOTAL ({rekapTitip.length} konsumen)</td>
-<td style={{padding:"6px 8px",textAlign:"center",fontWeight:900,color:C.blt}}>{rekapTitip.reduce((a,r)=>a+r.s12,0)}</td>
 <td style={{padding:"6px 8px",textAlign:"center",fontWeight:900,color:C.glt}}>{rekapTitip.reduce((a,r)=>a+r.s55,0)}</td>
+<td style={{padding:"6px 8px",textAlign:"center",fontWeight:900,color:C.blt}}>{rekapTitip.reduce((a,r)=>a+r.s12,0)}</td>
 <td style={{padding:"6px 8px",textAlign:"center",fontWeight:900,color:C.olt}}>{rekapTitip.reduce((a,r)=>a+r.s50,0)}</td>
 <td style={{padding:"6px 8px",textAlign:"center",fontWeight:900,color:C.wht,fontSize:14}}>{rekapTitip.reduce((a,r)=>a+r.total,0)}</td>
 <td></td>
@@ -2518,7 +2518,7 @@ return <div>
 {(()=>{
 var bulanTgl=tgl.slice(0,7);
 var rowsTB=buildStokHarian(data,bulanTgl).filter(r=>r.tgl<=tgl).slice(-3);
-var uk=["12 kg","5.5 kg","50 kg"];var ukL=["12kg","5,5kg","50kg"];
+var uk=["5.5 kg","12 kg","50 kg"];var ukL=["5,5kg","12kg","50kg"];
 return <div style={{overflowX:"auto"}}>
 <table style={{borderCollapse:"collapse",width:"100%",fontSize:10}}>
 <thead><tr style={{background:C.nav}}>
@@ -3034,7 +3034,7 @@ return <tr key={i} style={{background:i%2===0?"white":"#f9f9f9"}}>
 {/* 7. REKAP TABUNG AKHIR */}
 <div style={PS.h2}>7. REKAP TABUNG AKHIR HARI</div>
 {stokRow?<table style={PS.tbl}>
-<thead><tr>{["Keterangan","12 kg - Isi","12 kg - TK","5,5 kg - Isi","5,5 kg - TK","50 kg - Isi","50 kg - TK"].map(h=><th key={h} style={PS.th}>{h}</th>)}</tr></thead>
+<thead><tr>{["Keterangan","5,5 kg - Isi","5,5 kg - TK","12 kg - Isi","12 kg - TK","50 kg - Isi","50 kg - TK"].map(h=><th key={h} style={PS.th}>{h}</th>)}</tr></thead>
 <tbody>
 {[["Stok Akhir Isi & TK",SIZES.flatMap(s=>[stokRow.akhirIsi[s],stokRow.akhirTK[s]])],
 ["Titip di Konsumen",SIZES.flatMap(s=>[stokRow.titipSnap[s],"—"])],
