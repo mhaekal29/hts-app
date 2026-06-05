@@ -2553,7 +2553,7 @@ var rows=[
 return <div style={{overflowX:"auto"}}>
 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
 <thead><tr style={{background:C.nav}}>
-{["Keterangan","12 kg","5,5 kg","50 kg"].map(h=><th key={h} style={{padding:"8px 10px",color:C.gl2,fontWeight:700,textAlign:h==="Keterangan"?"left":"center",borderBottom:"2px solid "+C.bdr}}>{h}</th>)}
+{["Keterangan","5,5 kg","12 kg","50 kg"].map(h=><th key={h} style={{padding:"8px 10px",color:C.gl2,fontWeight:700,textAlign:h==="Keterangan"?"left":"center",borderBottom:"2px solid "+C.bdr}}>{h}</th>)}
 </tr></thead>
 <tbody>
 {rows.map((r,i)=><tr key={i} style={{borderBottom:"1px solid "+C.bdr,background:r[3]?C.nav:"transparent"}}>
@@ -2688,7 +2688,7 @@ return <div style={{overflowX:"auto"}}>
 {viewTB.detail?.stokSnapshot&&<div style={{background:C.nav,borderRadius:8,border:"1px solid "+C.bdr,overflow:"hidden",marginBottom:12}}>
 <div style={{padding:"8px 14px",borderBottom:"1px solid "+C.bdr,fontWeight:700,color:C.gl2,fontSize:12}}>📦 Rekap Tabung</div>
 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-<thead><tr style={{background:C.card}}>{["Keterangan","12 kg","5,5 kg","50 kg"].map(h=><th key={h} style={{padding:"6px 10px",color:C.gl2,fontWeight:700,textAlign:h==="Keterangan"?"left":"center",borderBottom:"1px solid "+C.bdr}}>{h}</th>)}</tr></thead>
+<thead><tr style={{background:C.card}}>{["Keterangan","5,5 kg","12 kg","50 kg"].map(h=><th key={h} style={{padding:"6px 10px",color:C.gl2,fontWeight:700,textAlign:h==="Keterangan"?"left":"center",borderBottom:"1px solid "+C.bdr}}>{h}</th>)}</tr></thead>
 <tbody>
 {[["(Tbg+Isi) Di Gudang","isi",C.glt],["Tbg Kosong Di Gudang","kosong",C.gl2],["Titip di Konsumen","titip",C.blt]].map((row,i)=><tr key={i} style={{borderBottom:"1px solid "+C.bdr}}>
 <td style={{padding:"6px 10px",color:C.gl2}}>{row[0]}</td>
@@ -2871,7 +2871,7 @@ var stokRow=stokRows.length>0?stokRows[stokRows.length-1]:null;
 var getHpp=function(uk){var mh=(data.modalHistory||[]).filter(m=>m.ukuran===uk&&m.jenis==="Isi"&&m.tanggal<=tglHarian);return mh.length>0?mh[0].harga:0;};
 // Kelompok per sales
 var salesGroups={};
-penjH.forEach(p=>{var key=p.salesNama||"(Tanpa Sales)";if(!salesGroups[key])salesGroups[key]={nama:key,items:[],omzet:0,margin:0};salesGroups[key].items.push(p);salesGroups[key].omzet+=(p.total||0);salesGroups[key].margin+=(p.margin||0);});
+penjH.forEach(p=>{var empP=(data.employees||[]).find(e=>e.id===p.salesId);var sNama=empP?.nama||p.salesNama||p.sales||"";var key=sNama||("(Tanpa Sales)");if(!salesGroups[key])salesGroups[key]={nama:key,items:[],omzet:0,margin:0};salesGroups[key].items.push(p);salesGroups[key].omzet+=(p.total||0);salesGroups[key].margin+=(p.margin||0);});
 // Pengeluaran per sales
 var penPerSales={};
 penH.forEach(p=>{var key=p.karyawanNama||"(Umum)";if(!penPerSales[key])penPerSales[key]=0;penPerSales[key]+=Number(p.nominal||0);});
