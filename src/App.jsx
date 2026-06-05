@@ -1286,7 +1286,48 @@ return <div>
 {tab==="rekap"&&<RekapTab/>}
 {tab==="mutasi"&&<MutasiTab/>}
 {tab==="opname"&&<OpnameTab/>}
-{tab==="titip"&&<TitipTab/>}
+{tab==="laporan"&&<div>
+<Card>
+<div style={{fontWeight:700,color:C.gl2,marginBottom:12,fontSize:13}}>📋 Laporan Stok Harian Bulanan</div>
+<div style={{display:"flex",gap:10,alignItems:"flex-end",flexWrap:"wrap",marginBottom:14}}>
+<Inp label="Pilih Bulan" type="month" value={stokBln} onChange={setStokBln} style={{maxWidth:180,marginBottom:0}}/>
+<Btn sm color="orange" onClick={()=>setShowInject(!showInject)}>{showInject?"✕ Tutup":"★ Inject Stok Awal"}</Btn>
+</div>
+{showInject&&<div style={{background:C.nav,borderRadius:8,padding:12,border:"1px solid #F59E0B",marginBottom:14}}>
+<div style={{fontWeight:700,color:"#F59E0B",marginBottom:10,fontSize:12}}>★ Set Stok Awal Manual — Titik Awal Perhitungan</div>
+<div style={{fontSize:11,color:C.gl2,marginBottom:10}}>Input stok pada tanggal tertentu sebagai titik awal. Sistem akan hitung otomatis hari berikutnya.</div>
+<div style={{display:"flex",gap:8,alignItems:"flex-end",flexWrap:"wrap",marginBottom:10}}>
+<Inp label="Tanggal Awal" type="date" value={injectTgl} onChange={setInjectTgl} style={{maxWidth:160,marginBottom:0}}/>
+</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:8,marginBottom:10}}>
+{SIZES.map(s=>[
+<Inp key={"ii"+s} label={"Isi "+s} type="number" value={injectF["isi_"+s]||""} onChange={v=>setInjectF(p=>({...p,["isi_"+s]:v}))} placeholder="0"/>,
+<Inp key={"ik"+s} label={"TK "+s+" (Kosong)"} type="number" value={injectF["tk_"+s]||""} onChange={v=>setInjectF(p=>({...p,["tk_"+s]:v}))} placeholder="0"/>
+])}
+</div>
+<div style={{display:"flex",gap:8}}>
+<Btn color="orange" onClick={()=>{
+var rec={tanggal:injectTgl};
+SIZES.forEach(s=>{rec["isi_"+s]=Number(injectF["isi_"+s]||0);rec["tk_"+s]=Number(injectF["tk_"+s]||0);});
+var existing=(data.stokHarian||[]).filter(r=>r.tanggal!==injectTgl);
+setData(d=>({...d,stokHarian:[rec,...existing]}));
+setShowInject(false);setInjectF({});
+toast("✓ Stok awal "+fDs(injectTgl)+" berhasil disimpan! Tabel akan dihitung ulang dari tanggal ini.");
+}}>💾 Simpan Stok Awal</Btn>
+<Btn sm color="gray" onClick={()=>{setShowInject(false);setInjectF({});}}>Batal</Btn>
+</div>
+{(data.stokHarian||[]).length>0&&<div style={{marginTop:10}}>
+<div style={{fontSize:11,color:C.gl2,marginBottom:6,fontWeight:700}}>Inject yang tersimpan:</div>
+{(data.stokHarian||[]).slice().sort((a,b)=>b.tanggal.localeCompare(a.tanggal)).map(r=><div key={r.tanggal} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 10px",background:C.bg,borderRadius:6,marginBottom:4,fontSize:11}}>
+<div><b style={{color:"#F59E0B"}}>★ {fDs(r.tanggal)}</b><span style={{color:C.gl2,marginLeft:8}}>{SIZES.map(s=>"isi "+s+": "+r["isi_"+s]+", TK: "+r["tk_"+s]).join(" | ")}</span></div>
+<button onClick={()=>{var existing=(data.stokHarian||[]).filter(x=>x.tanggal!==r.tanggal);setData(d=>({...d,stokHarian:existing}));}} style={{background:C.rdk,border:"none",borderRadius:5,padding:"2px 8px",color:"white",cursor:"pointer",fontSize:11}}>✕</button>
+</div>)}
+</div>}
+</div>}
+<TabelStokBulanan data={data} bulan={stokBln}/>
+</Card>
+</div>}
+{tab==="titip"&&(()=>{try{return <TitipTab/>;}catch(e){return <Card><div style={{color:C.rlt,padding:12}}>Error: {e.message}</div></Card>;}})()}
 {ba&&<BeritaAcaraView ba={ba} company={data.company} onClose={()=>setBa(null)}/>}
 </div>;
 }
