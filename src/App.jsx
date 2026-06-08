@@ -486,7 +486,7 @@ function PertaminaLogo({company={},h=32}){if(company.logoPertamina)return <img s
 // ─── INVOICE BARU v4 (no double logo, PDF/PNG buttons) ────────────────────────
 function InvoiceView({inv,company={},onClose}){
 if(!inv)return null;
-var isLunas=inv.metodeBayar!=="BON"&&(inv.metodeBayar||"").toLowerCase().indexOf("bon")<0&&!inv.isBon;
+var isLunas=inv.bonLunas||(inv.metodeBayar!=="BON"&&(inv.metodeBayar||"").toLowerCase().indexOf("bon")<0&&!inv.isBon);
 var total=inv.total||0;
 var NAVY="#0a1f44";var NAVY2="#122d5e";var BLUE="#1565c0";
 var RED="#e53935";var GREEN="#6ab04c";var TEAL="#00acc1";var TEAL_LIGHT="#e0f7fa";
@@ -1766,7 +1766,7 @@ var[openId,setOpenId]=useState(null);var[delId,setDelId]=useState(null);
 var[bF,setBF]=useState({nominal:"",metode:"cash",bank:"BSI",salesPenerimaId:""});
 var[barFilter,setBarFilter]=useState({from:"",to:"",salesId:"",konsumen:"",status:""});
 var salesList=sortEmp((data.employees||[]).filter(e=>e.aktif));
-function makeBonInvObj(b){var plg=(data.pelanggan||[]).find(x=>x.id===b.konsumenId);return{noInv:b.noInv||"#HTS/INV/-/-",tanggal:b.tanggal,konsumen:b.konsumen,kota:plg?.alamat?.split(",").pop()?.trim()||"Banda Aceh",items:(b.items||[]).map(it=>({ukuran:it.ukuran,jenis:it.jenis,qty:Number(it.qty),price:Number(it.price)})),total:b.total,metodeBayar:"BON",isBon:true,catatan:b.ket||""};}
+function makeBonInvObj(b){var plg=(data.pelanggan||[]).find(x=>x.id===b.konsumenId);return{noInv:b.noInv||"#HTS/INV/-/-",tanggal:b.tanggal,konsumen:b.konsumen,kota:plg?.alamat?.split(",").pop()?.trim()||"Banda Aceh",items:(b.items||[]).map(it=>({ukuran:it.ukuran,jenis:it.jenis,qty:Number(it.qty),price:Number(it.price)})),total:b.total,metodeBayar:b.status==="lunas"?"BON (LUNAS)":"BON",isBon:b.status!=="lunas",catatan:b.ket||"",bonLunas:b.status==="lunas"};}
 function bayar(b){
 if(!bF.nominal)return;var nom=Number(bF.nominal);var newSisa=Math.max(0,b.sisaTagihan-nom);var st=newSisa===0?"lunas":"sebagian";
 var payRec={id:uid(),tanggal:toDay(),jumlah:nom,metode:bF.metode,bank:bF.metode==="transfer"?bF.bank:"",salesPenerimaId:bF.salesPenerimaId,salesPenerimaNama:salesList.find(e=>e.id===bF.salesPenerimaId)?.nama||""};
