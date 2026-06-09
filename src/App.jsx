@@ -1898,8 +1898,6 @@ return true;
 
 // BON aktif untuk modal gabung
 var bonAktifGabung=(data.bon||[]).filter(b=>b.status!=="digabung").filter(b=>!gabungKons||b.konsumen.toLowerCase().includes(gabungKons.toLowerCase()));
-// Konsumen unik dari BON yang dipilih (max 1 konsumen per gabungan)
-var konsumenPilih=gabungPilih.length>0?(data.bon||[]).find(b=>b.id===gabungPilih[0])?.konsumen||"":"";
 
 var cols=[
 {key:"tanggal",label:"Tgl",render:r=>fDs(r.tanggal),sortVal:r=>r.tanggal,filterable:true},
@@ -1930,14 +1928,13 @@ return <div>
 </div>
 <div style={{padding:"12px 18px",borderBottom:"1px solid "+C.bdr}}>
 <Inp label="Filter Konsumen" value={gabungKons} onChange={setGabungKons} placeholder="Ketik nama konsumen..." style={{marginBottom:0}}/>
-{konsumenPilih&&<div style={{marginTop:6,fontSize:11,color:C.blt}}>⚠️ Hanya bisa pilih BON milik: <b style={{color:C.wht}}>{konsumenPilih}</b></div>}
+
 </div>
 <div style={{flex:1,overflowY:"auto",padding:"12px 18px"}}>
 {bonAktifGabung.length===0?<div style={{color:C.gl2,fontStyle:"italic",fontSize:12}}>Tidak ada BON aktif{gabungKons?" untuk konsumen ini":""}</div>:
 bonAktifGabung.map(b=>{
 var isPilih=gabungPilih.includes(b.id);
-var sameKons=!konsumenPilih||b.konsumen===konsumenPilih;
-return <div key={b.id} onClick={()=>{if(!sameKons)return;setGabungPilih(prev=>prev.includes(b.id)?prev.filter(x=>x!==b.id):[...prev,b.id]);}} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:isPilih?C.nav:C.bg,borderRadius:8,marginBottom:6,border:"2px solid "+(isPilih?C.blt:C.bdr),cursor:sameKons?"pointer":"not-allowed",opacity:sameKons?1:.4}}>
+return <div key={b.id} onClick={()=>setGabungPilih(prev=>prev.includes(b.id)?prev.filter(x=>x!==b.id):[...prev,b.id])} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:isPilih?C.nav:C.bg,borderRadius:8,marginBottom:6,border:"2px solid "+(isPilih?C.blt:C.bdr),cursor:"pointer"}}>
 <input type="checkbox" checked={isPilih} onChange={()=>{}} style={{width:16,height:16,cursor:"pointer"}}/>
 <div style={{flex:1}}>
 <div style={{fontWeight:700,color:C.wht,fontSize:12}}>{b.konsumen}</div>
