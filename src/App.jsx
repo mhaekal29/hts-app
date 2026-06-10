@@ -2157,13 +2157,14 @@ return <div key={pi} style={{background:isEdit?C.nav:C.bg,borderRadius:8,padding
 <div style={{display:"flex",gap:5}}>
 <button onClick={()=>setEditPayBon(p=>({...p,payIdx:isEdit?null:pi,editForm:{...pay}}))} style={{background:isEdit?C.olt:C.nav,border:"1px solid "+(isEdit?C.olt:C.bdr),borderRadius:6,padding:"4px 9px",color:isEdit?"white":C.gl2,cursor:"pointer",fontSize:11,fontWeight:700}}>{isEdit?"▲":"✏️ Edit"}</button>
 <button onClick={()=>{
-var bon=editPayBon.bon;
+var bonId=editPayBon.bon.id;
+var bon=(data.bon||[]).find(b=>b.id===bonId)||editPayBon.bon;
 var newPays=(bon.pembayaran||[]).filter((_,idx)=>idx!==pi);
-var newSisa=bon.total-newPays.reduce((a,p)=>a+(Number(p.jumlah||p.nominal)||0),0);
+var newSisa=Math.max(0,bon.total-newPays.reduce((a,p)=>a+(Number(p.jumlah||p.nominal||0)),0));
 var newStatus=newPays.length===0?"belum":newSisa<=0?"lunas":"sebagian";
-var log={id:uid(),type:"cancel_pay",by:user?.nama||"",at:new Date().toISOString(),before:{jumlah:pay.jumlah||pay.nominal||0,metode:pay.metode,tanggal:pay.tanggal},note:"Pembayaran dicancel"};
-var updBon={...bon,pembayaran:newPays,sisaTagihan:Math.max(0,newSisa),status:newStatus,editLog:[...(bon.editLog||[]),log]};
-var newBon=(data.bon||[]).map(b=>b.id===bon.id?updBon:b);
+var log={id:uid(),type:"cancel_pay",by:user?.nama||"Admin",at:new Date().toISOString(),before:{jumlah:pay.jumlah||pay.nominal||0,metode:pay.metode,tanggal:pay.tanggal},note:"Pembayaran dicancel"};
+var updBon={...bon,pembayaran:newPays,sisaTagihan:newSisa,status:newStatus,editLog:[...(bon.editLog||[]),log]};
+var newBon=(data.bon||[]).map(b=>b.id===bonId?updBon:b);
 setData(d=>({...d,bon:newBon}));
 setEditPayBon({bon:updBon,payIdx:null,editForm:null});
 toast("✓ Pembayaran dicancel. Status: "+newStatus);
@@ -2185,16 +2186,20 @@ toast("✓ Pembayaran dicancel. Status: "+newStatus);
 {(editPayBon.editForm.metode||"cash")==="transfer"&&<div style={{display:"flex",gap:6,marginTop:6}}>{["BSI","BCA"].map(b=><button key={b} onClick={()=>setEditPayBon(p=>({...p,editForm:{...p.editForm,bank:b}}))} style={{background:(editPayBon.editForm.bank||"BSI")===b?C.blu:C.nav,color:(editPayBon.editForm.bank||"BSI")===b?"white":C.wht,border:"2px solid "+((editPayBon.editForm.bank||"BSI")===b?C.blt:C.bdr),borderRadius:7,padding:"4px 14px",fontWeight:700,cursor:"pointer",fontSize:12}}>{b}</button>)}</div>}
 </div>
 <button onClick={()=>{
-var bon=editPayBon.bon;var pi2=editPayBon.payIdx;var ef2=editPayBon.editForm;
-var log={id:uid(),type:"edit_pay",by:user?.nama||"",at:new Date().toISOString(),before:{...(bon.pembayaran||[])[pi2]},note:"Pembayaran diedit"};
-var newPays=(bon.pembayaran||[]).map((p,idx)=>idx===pi2?{...p,...ef2}:p);
-var newSisa=bon.total-newPays.reduce((a,p)=>a+(Number(p.jumlah||p.nominal)||0),0);
-var newStatus=newSisa<=0?"lunas":"sebagian";
-var updBon={...bon,pembayaran:newPays,sisaTagihan:Math.max(0,newSisa),status:newStatus,editLog:[...(bon.editLog||[]),log]};
-var newBon=(data.bon||[]).map(b=>b.id===bon.id?updBon:b);
+var bonId=editPayBon.bon.id;
+var bon=(data.bon||[]).find(b=>b.id===bonId)||editPayBon.bon;
+var pi2=editPayBon.payIdx;
+var ef2=editPayBon.editForm;
+if(pi2===null||pi2===undefined||!ef2)return;
+var log={id:uid(),type:"edit_pay",by:user?.nama||"Admin",at:new Date().toISOString(),before:{...(bon.pembayaran||[])[pi2]},note:"Pembayaran diedit"};
+var newPays=(bon.pembayaran||[]).map((p,idx)=>idx===pi2?{...p,...ef2,jumlah:Number(ef2.jumlah||ef2.nominal||p.jumlah||p.nominal||0)}:p);
+var newSisa=Math.max(0,bon.total-newPays.reduce((a,p)=>a+(Number(p.jumlah||p.nominal||0)),0));
+var newStatus=newSisa<=0?"lunas":newPays.length===0?"belum":"sebagian";
+var updBon={...bon,pembayaran:newPays,sisaTagihan:newSisa,status:newStatus,editLog:[...(bon.editLog||[]),log]};
+var newBon=(data.bon||[]).map(b=>b.id===bonId?updBon:b);
 setData(d=>({...d,bon:newBon}));
 setEditPayBon({bon:updBon,payIdx:null,editForm:null});
-toast("✓ Pembayaran diperbarui!");
+toast("✓ Pembayaran diperbarui! Status: "+newStatus);
 }} style={{background:C.glt,border:"none",borderRadius:8,padding:"7px 18px",color:"white",cursor:"pointer",fontWeight:700,fontSize:12,width:"100%"}}>💾 Simpan Perubahan</button>
 </div>}
 </div>;})}
