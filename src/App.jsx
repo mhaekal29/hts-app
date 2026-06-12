@@ -2131,7 +2131,15 @@ setTimeout(function(){var e=document.getElementById("_lap_bon");if(e)e.remove();
 </Card>;})()}
 {/* Total sisa mengikuti filter */}
 {(()=>{
-var rowsFiltered=rows.filter(r=>r.status!=="lunas"&&r.status!=="digabung");
+var rowsFiltered=rows.filter(r=>{
+if(r.status==="lunas"||r.status==="digabung")return false;
+if(barFilter.from&&r.tanggal<barFilter.from)return false;
+if(barFilter.to&&r.tanggal>barFilter.to)return false;
+if(barFilter.salesId&&r.salesId!==barFilter.salesId)return false;
+if(barFilter.konsumen&&!r.konsumen.toLowerCase().includes(barFilter.konsumen.toLowerCase()))return false;
+if(barFilter.status&&r.status!==barFilter.status)return false;
+return true;
+});
 var totalSisaFilter=rowsFiltered.reduce((a,r)=>a+(r.sisaTagihan||0),0);
 var totalFilter=rowsFiltered.reduce((a,r)=>a+(r.total||0),0);
 if(rowsFiltered.length===0)return null;
@@ -3990,6 +3998,7 @@ var STATUS_COLOR={H:"#15803D",I:"#B45309",C:"#1D4ED8",A:"#DC2626"};
 var STATUS_BG={H:"#DCFCE7",I:"#FEF3C7",C:"#DBEAFE",A:"#FEE2E2"};
 var STATUS_LABEL={H:"Hadir",I:"Izin",C:"Cuti",A:"Alpha"};
 var karList=sortEmp((data.employees||[]).filter(e=>e.aktif));
+var karAbsensi=karList.filter(e=>e.ikutAbsensi);
 var dim=daysInMonth(viewBln);
 var days=Array.from({length:dim},(_,i)=>String(i+1).padStart(2,"0"));
 
