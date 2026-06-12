@@ -431,7 +431,7 @@ function MonthPicker({label,value,onChange}){var C=useTheme();var IS={width:"100
 
 // ─── FILTER TABLE (NEW v4) ────────────────────────────────────────────────────
 // Tabel dengan: filter mini di header + sort klik header, dipakai di Penjualan, Piutang, Pengeluaran, Laporan
-function FilterTbl({columns,data:rows,empty="Belum ada data",maxRows=200,renderMobileCard}){
+function FilterTbl({columns,data:rows,empty="Belum ada data",maxRows=200,renderMobileCard,footerRow}){
 var C=useTheme();var mob=useMobile();
 var[hdrFilters,setHdrFilters]=useState({});
 var[sort,setSort]=useState({key:null,dir:"asc"});
@@ -469,6 +469,7 @@ return <div>
 <tbody>
 {!display.length?<tr><td colSpan={columns.length} style={{padding:20,textAlign:"center",color:C.gl2}}>{empty}</td></tr>:display.map((r,i)=><tr key={i} style={{borderBottom:"1px solid "+C.bdr}}>{columns.map(c=><td key={c.key} style={{padding:"7px 10px",color:C.wht}}>{c.render?c.render(r):r[c.key]}</td>)}</tr>)}
 </tbody>
+{footerRow&&display.length>0&&<tfoot>{footerRow(sorted)}</tfoot>}
 </table>
 </div>
 {(Object.values(hdrFilters).some(v=>v)||sort.key)&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",fontSize:11,color:C.gl2}}><span>{sorted.length} dari {rows.length} hasil</span><Btn sm color="gray" onClick={()=>{setHdrFilters({});setSort({key:null,dir:"asc"});}}>✕ Reset Filter</Btn></div>}
@@ -2114,7 +2115,19 @@ setTimeout(function(){var e=document.getElementById("_lap_bon");if(e)e.remove();
 }} style={{background:"#0a1f44",color:"white",border:"none",padding:"8px 16px",borderRadius:7,fontSize:12,cursor:"pointer",fontWeight:700}}>🖨️ Cetak Laporan BON</button>
 <span style={{fontSize:10,color:C.gl2,fontStyle:"italic"}}>Cetak sesuai filter aktif — hanya bon belum lunas</span>
 </div>
-<FilterTbl columns={cols} data={rows} empty="Belum ada bon" maxRows={150}/>
+<FilterTbl columns={cols} data={rows} empty="Belum ada bon" maxRows={150}
+footerRow={sorted=>{
+var aktif=sorted.filter(r=>r.status!=="lunas"&&r.status!=="digabung");
+var totalSisa=aktif.reduce((a,r)=>a+(r.sisaTagihan||0),0);
+if(!totalSisa)return null;
+// cari index kolom sisa (index 5)
+var nCols=cols.length;
+return <tr style={{background:C.nav,borderTop:"2px solid "+C.bdr}}>
+<td colSpan={5} style={{padding:"8px 10px",color:C.gl2,fontSize:11,fontWeight:600}}>{aktif.length} bon aktif</td>
+<td style={{padding:"8px 10px",textAlign:"left",color:C.rlt,fontWeight:900,fontSize:14}}>{fR(totalSisa)}</td>
+<td colSpan={nCols-6}/>
+</tr>;
+}}/>
 </Card>
 {openId&&(()=>{var b=(data.bon||[]).find(x=>x.id===openId);if(!b)return null;var paid=(b.pembayaran||[]).reduce((a,p)=>a+p.jumlah,0);return <Card style={{border:"1px solid "+C.blt}}>
 <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:8}}>
