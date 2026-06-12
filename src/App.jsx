@@ -4384,6 +4384,15 @@ filtered.map((t,i)=><tr key={i} style={{background:i%2===0?C.bg:C.nav,borderBott
 <span style={{display:"inline-block",width:12,height:12,borderRadius:3,background:C.bdr,marginRight:4}}/>Tidak Ada
 </div>
 </div>
+{/* Status total belum setor */}
+{(()=>{
+var totalBelumSetor=Object.entries(hariData).filter(([tgl,hd])=>hd.hasPecah&&!hd.disetor).reduce((a,[_,hd])=>a+(hd.wajibSetor||0),0);
+var jmlHariBelum=Object.entries(hariData).filter(([_,hd])=>hd.hasPecah&&!hd.disetor).length;
+return totalBelumSetor>0?<div style={{background:"#FEF3C7",border:"1px solid #F59E0B",borderRadius:8,padding:"8px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+<span style={{fontSize:12,color:"#92400E",fontWeight:700}}>⚠️ {jmlHariBelum} hari belum disetor</span>
+<span style={{fontSize:15,fontWeight:900,color:"#92400E"}}>Total: {fR(totalBelumSetor)}</span>
+</div>:null;
+})()}
 {/* Kalender */}
 <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:12}}>
 {HARI_ID.map(h=><div key={h} style={{textAlign:"center",fontSize:10,color:C.gl2,fontWeight:700,padding:"4px 0"}}>{h}</div>)}
@@ -4393,12 +4402,14 @@ var d2=i+1;
 var tglD2=bulanSetor+"-"+String(d2).padStart(2,"0");
 var hd=hariData[tglD2]||{};
 var isPilih=tglPilih.includes(tglD2);
-var bg=hd.disetor?C.grn:isPilih?C.blt:hd.hasPecah?"#F59E0B":C.bdr;
-var color=hd.disetor||isPilih||hd.hasPecah?"white":C.gl2;
-var canClick=hd.hasPecah&&!hd.disetor;
-return <div key={d2} onClick={()=>{if(!canClick)return;setTglPilih(prev=>prev.includes(tglD2)?prev.filter(x=>x!==tglD2):[...prev,tglD2]);setPecahInput(()=>{var o={};DENOMS.forEach(d=>{o[d]="";});return o;});}} style={{textAlign:"center",padding:"8px 4px",borderRadius:6,background:bg,color,fontSize:12,fontWeight:isPilih||hd.disetor?700:400,cursor:canClick?"pointer":"default",opacity:hd.hasTB&&!hd.hasPecah?.6:1,border:isPilih?"2px solid white":"2px solid transparent"}}>
-<div>{d2}</div>
-{hd.wajibSetor>0&&<div style={{fontSize:8,opacity:.85}}>{(hd.wajibSetor/1000).toFixed(0)}k</div>}
+// Warna: dipilih=biru, sudah setor=hijau, tersedia=kuning, tidak ada=abu
+var bg=isPilih?"#1D4ED8":hd.disetor?"#15803D":hd.hasPecah?"#F59E0B":C.bdr;
+var color=isPilih||hd.disetor||hd.hasPecah?"white":C.gl2;
+var canClick=hd.hasPecah;// SEMUA tgl ada pecahan bisa diklik, termasuk yang sudah setor
+return <div key={d2} onClick={()=>{if(!canClick)return;setTglPilih(prev=>prev.includes(tglD2)?prev.filter(x=>x!==tglD2):[...prev,tglD2]);setPecahInput(()=>{var o={};DENOMS.forEach(d=>{o[d]="";});return o;});}} style={{textAlign:"center",padding:"6px 3px",borderRadius:6,background:bg,color,fontSize:12,fontWeight:isPilih||hd.disetor?700:400,cursor:canClick?"pointer":"default",border:isPilih?"2px solid white":hd.disetor?"2px solid #86EFAC":"2px solid transparent",position:"relative"}}>
+<div style={{fontSize:13,fontWeight:700}}>{d2}</div>
+{hd.wajibSetor>0&&<div style={{fontSize:10,fontWeight:700,marginTop:1,opacity:.95}}>{(hd.wajibSetor/1000000)>=1?(hd.wajibSetor/1000000).toFixed(1)+"jt":(hd.wajibSetor/1000).toFixed(0)+"k"}</div>}
+{hd.disetor&&<div style={{fontSize:8,opacity:.85}}>✓setor</div>}
 </div>;})}
 </div>
 </Card>
@@ -4609,41 +4620,48 @@ return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",zIndex:
 <div style={{fontSize:12,color:"#555"}}>{hariLabel} &nbsp;|&nbsp; {tglLabel}</div>
 </div>
 {/* Tabel pecahan */}
-<table style={{width:"100%",borderCollapse:"collapse",fontSize:12,marginBottom:12}}>
+<table style={{width:"90%",margin:"0 auto",borderCollapse:"collapse",fontSize:13,marginBottom:16}}>
 <thead>
 <tr style={{background:"#0a1f44"}}>
-<th style={{padding:"6px 8px",color:"white",textAlign:"left",border:"1px solid #ccc"}}>PECAHAN</th>
-<th style={{padding:"6px 8px",color:"white",textAlign:"center",border:"1px solid #ccc"}}>LBR</th>
-<th style={{padding:"6px 8px",color:"white",textAlign:"right",border:"1px solid #ccc"}}>JUMLAH</th>
+<th style={{padding:"8px 14px",color:"white",textAlign:"left",border:"1px solid #1e3a5f",fontSize:11,letterSpacing:.8}}>PECAHAN</th>
+<th style={{padding:"8px 10px",color:"white",textAlign:"center",border:"1px solid #1e3a5f",fontSize:11,letterSpacing:.8}}>LBR</th>
+<th style={{padding:"8px 14px",color:"white",textAlign:"right",border:"1px solid #1e3a5f",fontSize:11,letterSpacing:.8}}>JUMLAH</th>
 </tr>
 </thead>
 <tbody>
+{(()=>{
+var totalReal=DENOMS.reduce((a,d)=>a+Number(last.pecahReal?.[d]||last.pecah?.[d]||0)*d,0);
+return <>
 {DENOMS.map(d=>{
 var lbr=Number(last.pecahReal?.[d]||last.pecah?.[d]||0);
 var jml=lbr*d;
-return <tr key={d} style={{borderBottom:"1px solid #e5e7eb"}}>
-<td style={{padding:"5px 8px",color:"#111",border:"1px solid #ddd"}}>Rp {(d/1000).toFixed(0)}.000</td>
-<td style={{padding:"5px 8px",textAlign:"center",color:lbr>0?"#0a1f44":"#aaa",fontWeight:lbr>0?700:400,border:"1px solid #ddd"}}>{lbr||"—"}</td>
-<td style={{padding:"5px 8px",textAlign:"right",color:jml>0?"#0a1f44":"#aaa",fontWeight:jml>0?700:400,border:"1px solid #ddd"}}>{jml>0?"Rp "+fR(jml).replace("Rp ",""):"Rp —"}</td>
+return <tr key={d} style={{borderBottom:"1px solid #E5E7EB",background:lbr>0?"white":"#FAFAFA"}}>
+<td style={{padding:"7px 14px",color:"#111",border:"1px solid #E2E8F0",fontSize:13}}>Rp {Number(d).toLocaleString("id-ID")}</td>
+<td style={{padding:"7px 10px",textAlign:"center",color:lbr>0?"#0a1f44":"#CBD5E1",fontWeight:lbr>0?700:400,border:"1px solid #E2E8F0",fontSize:14}}>{lbr||"—"}</td>
+<td style={{padding:"7px 14px",textAlign:"right",color:jml>0?"#0a1f44":"#CBD5E1",fontWeight:jml>0?700:400,border:"1px solid #E2E8F0",fontSize:13}}>{jml>0?"Rp "+jml.toLocaleString("id-ID"):"—"}</td>
 </tr>;})}
 <tr style={{background:"#0a1f44",fontWeight:700}}>
-<td colSpan={2} style={{padding:"7px 8px",color:"white",border:"1px solid #ccc"}}>TOTAL</td>
-<td style={{padding:"7px 8px",textAlign:"right",color:"white",fontSize:14,border:"1px solid #ccc"}}>Rp {fR(last.nominal).replace("Rp ","")}</td>
+<td colSpan={2} style={{padding:"9px 14px",color:"white",border:"1px solid #1e3a5f",fontSize:13,letterSpacing:.5}}>TOTAL</td>
+<td style={{padding:"9px 14px",textAlign:"right",color:"white",fontSize:16,border:"1px solid #1e3a5f",fontWeight:900}}>Rp {totalReal.toLocaleString("id-ID")}</td>
 </tr>
+</>;
+})()}
 </tbody>
 </table>
-{/* Footer info */}
-<div style={{background:"#F8FAFC",borderRadius:6,padding:"10px 12px",border:"1px solid #E2E8F0",marginBottom:12}}>
-<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-<span style={{fontSize:11,color:"#64748B",fontWeight:700}}>SETORAN LPG</span>
-<span style={{fontSize:13,fontWeight:900,color:"#0a1f44"}}>{last.bank}</span>
+{/* Footer info rekening — desain lebih menarik */}
+<div style={{width:"90%",margin:"0 auto 12px",background:"#F0F7FF",borderRadius:10,border:"1.5px solid #BFDBFE",overflow:"hidden"}}>
+<div style={{background:"#0a1f44",padding:"8px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+<span style={{fontSize:11,color:"#93C5FD",fontWeight:700,letterSpacing:1}}>SETORAN LPG</span>
+<span style={{fontSize:16,fontWeight:900,color:"white",letterSpacing:.5}}>{last.bank}</span>
 </div>
-{[["Penyetor",last.penyetor||penyetor],["Nama Nasabah","PT. HOE TRANG SA"],["Nomor Rekening",noRek]].map(x=><div key={x[0]} style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-<span style={{fontSize:11,color:"#64748B"}}>{x[0]}</span>
-<span style={{fontSize:11,fontWeight:700,color:"#0a1f44"}}>{x[1]}</span>
+<div style={{padding:"12px 16px"}}>
+{[["Penyetor",last.penyetor||penyetor,14],["Nama Nasabah","PT. HOE TRANG SA",14],["Nomor Rekening",noRek,16]].map(x=><div key={x[0]} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:x[2]===16?0:8,paddingBottom:x[2]===16?0:8,borderBottom:x[2]===16?"none":"1px solid #DBEAFE"}}>
+<span style={{fontSize:11,color:"#475569"}}>{x[0]}</span>
+<span style={{fontSize:x[2],fontWeight:700,color:"#0a1f44"}}>{x[1]}</span>
 </div>)}
 </div>
-<div style={{textAlign:"center",fontSize:9,color:"#94A3B8"}}>
+</div>
+<div style={{textAlign:"center",fontSize:9,color:"#94A3B8",marginBottom:4}}>
 Jl. Jendral Sudirman No. 80 · Banda Aceh &nbsp;|&nbsp; 081269002121 / (0651) 21221
 </div>
 </div>
