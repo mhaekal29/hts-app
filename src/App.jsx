@@ -1982,8 +1982,8 @@ var bonAktifGabung=(data.bon||[]).filter(b=>b.status!=="digabung").filter(b=>!ga
 
 var cols=[
 {key:"tanggal",label:"Tgl",render:r=>fDs(r.tanggal),sortVal:r=>r.tanggal,filterable:true},
-{key:"konsumen",label:"Konsumen",render:r=><b style={{color:C.wht,display:"block",minWidth:120}}>{r.konsumen}</b>,filterable:true,width:127},
-{key:"salesNama",label:"Sales",filterable:true},
+{key:"konsumen",label:"Konsumen",render:r=><b style={{color:C.wht,display:"block",minWidth:120}}>{r.konsumen}</b>,filterable:false,width:127},
+{key:"salesNama",label:"Sales",filterable:false},
 {key:"deadline",label:"Jatuh Tempo",render:r=>r.deadline?<span style={{color:r.dl<0&&r.status!=="lunas"?C.rlt:r.dl<=3&&r.status!=="lunas"?C.olt:C.gl2}}>{fDs(r.deadline)}{r.status!=="lunas"&&r.dl!=null?" ("+(r.dl<0?Math.abs(r.dl)+"h LEWAT":r.dl+"h)"):""}</span>:"-",filterable:false},
 {key:"total",label:"Total",render:r=>fR(r.total),filterable:false},
 {key:"sisaTagihan",label:"Sisa",render:r=><b style={{color:r.status==="lunas"?C.glt:r.status==="digabung"?C.gl2:C.rlt}}>{fR(r.sisaTagihan)}</b>,filterable:false},
