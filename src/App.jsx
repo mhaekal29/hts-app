@@ -3203,11 +3203,18 @@ var cashFlowOmset=cashTotal+piutangModal;
 // Total Asset
 var assetValue=cashFlowOmset+assetTabungMilikPT+assetArmada;
 
+// Kurang setor yang dijadikan pinjaman hari ini
+// → uang ini tidak masuk kas, tapi sudah tercatat sebagai piutang karyawan (ambilan)
+// → harus menjadi pengurang labaBersih harian di deltaSelisih
+var kurangSetorHari=(data.ambilan||[]).filter(a=>a.tanggal===tgl&&(a.ket||"").toLowerCase().includes("kurang setor")).reduce((a,x)=>a+Number(x.nominal||0),0);
+
 // Prev tutup buku
 var prevTB=(data.tutupBuku||[]).filter(r=>tab==="harian"?r.tanggal<tgl:r.bulan&&r.bulan<bln).sort((a,b)=>b.tanggal.localeCompare(a.tanggal))[0];
 var cashFlowKemarin=prevTB?.cashFlowOmset||0;
 var tglTBKemarin=prevTB?.tanggal||null;// tanggal TB terakhir yang dipakai
-var deltaSelisih=cashFlowOmset-cashFlowKemarin-(labaBersihH+(Number(pemasukanLain)||0));
+// labaBersihEfektif: laba bersih dikurangi kurang setor (uang tidak masuk kas fisik)
+var labaBersihEfektif=labaBersihH+(Number(pemasukanLain)||0)-kurangSetorHari;
+var deltaSelisih=cashFlowOmset-cashFlowKemarin-labaBersihEfektif;
 
 // Pemasukan lainnya
 var[pemasukanLain,setPemasukanLain]=useState("");
@@ -3241,7 +3248,8 @@ var rec={
   tanggal:tgl,
   omzet:omzetH,hpp:hppH,labaKotor:marginH,totalOut:totalOutH,
   pemasukanLain:Number(pemasukanLain)||0,
-  labaBersih:labaBersihH+(Number(pemasukanLain)||0),
+  labaBersih:labaBersihEfektif,
+  kurangSetorHari,
   cashIn:cashInH,tfIn:tfInH,bonIn:bonInH,
   cashLaci:Number(cashLaci)||0,rekBSI:Number(rekBSI)||0,rekBCA:Number(rekBCA)||0,totalPecah,pecah:{...pecah},
   piutangA,nilaiStokA,pinjamanA,
@@ -3313,7 +3321,9 @@ var bonBayarTFTgl=(data.bon||[]).reduce((a,b)=>{var px=(b.pembayaran||[]).filter
 var penCashTgl=allPenTgl.filter(p=>(p.metode||"cash").toLowerCase()==="cash").reduce((a,p)=>a+Number(p.nominal||0),0);
 var penTFTgl=allPenTgl.filter(p=>(p.metode||"").toLowerCase()==="transfer"||(p.metode||"").toLowerCase()==="tf").reduce((a,p)=>a+Number(p.nominal||0),0);
 var totalCashMasuk=cashPenjTgl+bonBayarCashTgl;
-var wajibSetorKasir=Math.max(0,totalCashMasuk-penCashTgl);
+// Kurang setor sales hari ini = uang yang tidak masuk laci, sudah jadi pinjaman karyawan
+var kurangSetorKasir=(data.ambilan||[]).filter(a=>a.tanggal===tgl&&(a.ket||"").toLowerCase().includes("kurang setor")).reduce((a,x)=>a+Number(x.nominal||0),0);
+var wajibSetorKasir=Math.max(0,totalCashMasuk-penCashTgl-kurangSetorKasir);
 return <Card style={{border:"2px solid "+C.glt}}>
 <div style={{fontWeight:700,color:C.glt,marginBottom:10,fontSize:13}}>🏦 Cash Wajib Setor Kasir — {fDs(tgl)}</div>
 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
@@ -3339,6 +3349,8 @@ return <Card style={{border:"2px solid "+C.glt}}>
 <div style={{fontSize:15,fontWeight:900,color:C.glt,marginBottom:8}}>{fR(totalCashMasuk)}</div>
 <div style={{fontSize:11,color:C.gl2,marginBottom:4}}>Pengeluaran Cash</div>
 <div style={{fontSize:15,fontWeight:900,color:C.rlt,marginBottom:8}}>- {fR(penCashTgl)}</div>
+{kurangSetorKasir>0&&<><div style={{fontSize:11,color:C.gl2,marginBottom:4}}>Kurang Setor Sales</div>
+<div style={{fontSize:15,fontWeight:900,color:C.rlt,marginBottom:8}}>- {fR(kurangSetorKasir)}</div></>}
 <div style={{height:1,background:C.bdr,marginBottom:8}}/>
 <div style={{fontSize:11,color:C.glt,fontWeight:700,marginBottom:4}}>WAJIB SETOR KE BANK</div>
 <div style={{fontSize:22,fontWeight:900,color:C.wht,marginBottom:10}}>{fR(wajibSetorKasir)}</div>
@@ -3378,7 +3390,7 @@ return <Card style={{border:"2px solid "+C.glt}}>
 <Card style={{border:"1px solid "+C.glt}}>
 <div style={{fontWeight:700,color:C.glt,marginBottom:12,fontSize:13}}>📊 P&L Hari Ini</div>
 <div style={{border:"1px solid "+C.bdr,borderRadius:8,overflow:"hidden",marginBottom:10}}>
-{[["Omzet",omzetH,C.wht,false],["HPP / Modal",hppH,C.gl2,false],["Laba Kotor",marginH,C.blt,true],["Pengeluaran Operasional",-totalOutH,C.rlt,false],["Pemasukan Lainnya",Number(pemasukanLain)||0,C.olt,false],["LABA BERSIH",labaBersihH+(Number(pemasukanLain)||0),(labaBersihH+(Number(pemasukanLain)||0))>=0?C.glt:C.rlt,true]].map((x,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:x[3]?"10px 14px":"7px 14px",background:x[3]?C.nav:"transparent",borderBottom:"1px solid "+C.bdr}}><span style={{fontSize:x[3]?13:12,color:x[3]?C.wht:C.gl2,fontWeight:x[3]?700:400}}>{x[0]}</span><span style={{fontSize:x[3]?15:13,fontWeight:x[3]?900:600,color:x[2]}}>{fR(x[1])}</span></div>)}
+{[["Omzet",omzetH,C.wht,false],["HPP / Modal",hppH,C.gl2,false],["Laba Kotor",marginH,C.blt,true],["Pengeluaran Operasional",-totalOutH,C.rlt,false],["Pemasukan Lainnya",Number(pemasukanLain)||0,C.olt,false],...(kurangSetorHari>0?[["Kurang Setor Sales",-kurangSetorHari,C.rlt,false]]:[]),["LABA BERSIH EFEKTIF",labaBersihEfektif,labaBersihEfektif>=0?C.glt:C.rlt,true]].map((x,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:x[3]?"10px 14px":"7px 14px",background:x[3]?C.nav:"transparent",borderBottom:"1px solid "+C.bdr}}><span style={{fontSize:x[3]?13:12,color:x[3]?C.wht:C.gl2,fontWeight:x[3]?700:400}}>{x[0]}</span><span style={{fontSize:x[3]?15:13,fontWeight:x[3]?900:600,color:x[2]}}>{fR(x[1])}</span></div>)}
 </div>
 <Inp label="Pemasukan Lainnya (topup saham dll)" type="number" value={pemasukanLain} onChange={setPemasukanLain} placeholder="0"/>
 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginTop:10}}>
@@ -3414,7 +3426,7 @@ return <Card style={{border:"2px solid "+C.glt}}>
 <Card style={{border:"1px solid "+(Math.abs(deltaSelisih)<1000?C.glt:C.olt)}}>
 <div style={{fontWeight:700,color:C.gl2,marginBottom:10,fontSize:13}}>✅ Verifikasi Cash Flow</div>
 <div style={{border:"1px solid "+C.bdr,borderRadius:8,overflow:"hidden"}}>
-{[[(tglTBKemarin?"Cash Flow "+fDs(tglTBKemarin):"Belum ada TB sebelumnya"),cashFlowKemarin,C.gl2,false],["Laba Hari Ini",labaBersihH+(Number(pemasukanLain)||0),C.glt,false],["Total Cash Flow Hari Ini",cashFlowOmset,C.blt,true],["SELISIH",deltaSelisih,Math.abs(deltaSelisih)<1000?C.glt:C.rlt,true]].map((x,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:x[3]?"10px 14px":"7px 14px",background:x[3]?C.nav:"transparent",borderBottom:"1px solid "+C.bdr}}><span style={{fontSize:x[3]?13:12,color:x[3]?C.wht:C.gl2,fontWeight:x[3]?700:400}}>{x[0]}</span><span style={{fontSize:x[3]?15:13,fontWeight:x[3]?900:600,color:x[2]}}>{fR(x[1])}</span></div>)}
+{[[(tglTBKemarin?"Cash Flow "+fDs(tglTBKemarin):"Belum ada TB sebelumnya"),cashFlowKemarin,C.gl2,false],["Laba Bersih Efektif",labaBersihEfektif,C.glt,false],...(kurangSetorHari>0?[["  ↳ incl. Kurang Setor ("+fR(kurangSetorHari)+")",-kurangSetorHari,C.rlt,false]]:[]),["Total Cash Flow Hari Ini",cashFlowOmset,C.blt,true],["SELISIH",deltaSelisih,Math.abs(deltaSelisih)<1000?C.glt:C.rlt,true]].map((x,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:x[3]?"10px 14px":"7px 14px",background:x[3]?C.nav:"transparent",borderBottom:"1px solid "+C.bdr}}><span style={{fontSize:x[3]?13:12,color:x[3]?C.wht:C.gl2,fontWeight:x[3]?700:400}}>{x[0]}</span><span style={{fontSize:x[3]?15:13,fontWeight:x[3]?900:600,color:x[2]}}>{fR(x[1])}</span></div>)}
 </div>
 {Math.abs(deltaSelisih)<1000&&<div style={{marginTop:8,padding:"6px 12px",background:C.grn,borderRadius:6,fontSize:12,fontWeight:700,color:"white"}}>✅ Selisih = 0. Cash flow balance!</div>}
 {Math.abs(deltaSelisih)>=1000&&<div style={{marginTop:8,padding:"6px 12px",background:C.rdk,borderRadius:6,fontSize:12,color:"white"}}>⚠️ Ada selisih {fR(Math.abs(deltaSelisih))}. Periksa input cash atau ada transaksi yang terlewat.</div>}
@@ -4568,7 +4580,8 @@ for(var di=1;di<=dim;di++){
     var cashPenj=(data.penjualan||[]).filter(p=>p.tanggal===tglD&&(p.bayar||"").toLowerCase()==="cash").reduce((a,p)=>a+(p.total||0),0);
     var bonCashD=(data.bon||[]).reduce((a,b)=>{var px=(b.pembayaran||[]).filter(p=>p.tanggal===tglD&&(p.metode||"cash").toLowerCase()==="cash");return a+px.reduce((s,p)=>s+Number(p.jumlah||p.nominal||0),0);},0);
     var penCashD=(data.pengeluaran||[]).filter(p=>p.tanggal===tglD&&(p.metode||"cash").toLowerCase()==="cash").reduce((a,p)=>a+Number(p.nominal||0),0);
-    wajibSetor=Math.max(0,cashPenj+bonCashD-penCashD);
+    var kurangSetorD=(data.ambilan||[]).filter(a=>a.tanggal===tglD&&(a.ket||"").toLowerCase().includes("kurang setor")).reduce((a,x)=>a+Number(x.nominal||0),0);
+    wajibSetor=Math.max(0,cashPenj+bonCashD-penCashD-kurangSetorD);
   }
   var disetor=(data.kas||{})[tglD]?.disetor;
   // pecah object: dari field pecah (DENOMS qty) atau estimasi dari totalPecah number
